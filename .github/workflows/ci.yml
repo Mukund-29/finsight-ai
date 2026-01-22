@@ -51,7 +51,7 @@ jobs:
 
     - name: Test docker-compose
       run: |
-        docker-compose up -d
+        docker compose up -d
         sleep 10
         docker compose ps
         docker compose down
