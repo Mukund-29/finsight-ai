@@ -1,75 +1,7 @@
-version: '3.8'
+version: "3.8"
 
 services:
   frontend:
-    build:
-      context: ./frontend-angular
-      dockerfile: Dockerfile
-    container_name: finsight-frontend
+    build: ./frontend-angular
     ports:
-      - "3000:80"
-    environment:
-      - API_URL=http://backend:8080
-      - AI_SERVICE_URL=http://ai-service:8000
-    depends_on:
-      - backend
-      - ai-service
-    networks:
-      - finsight-network
-    restart: unless-stopped
-
-  backend:
-    build:
-      context: ./backend-springboot
-      dockerfile: Dockerfile
-    container_name: finsight-backend
-    ports:
-      - "8080:8080"
-    environment:
-      - SPRING_PROFILES_ACTIVE=prod
-      - AI_SERVICE_URL=http://ai-service:8000
-      - DATABASE_URL=jdbc:postgresql://postgres:5432/finsight
-      - DATABASE_USERNAME=finsight_user
-      - DATABASE_PASSWORD=finsight_password
-    depends_on:
-      - postgres
-      - ai-service
-    networks:
-      - finsight-network
-    restart: unless-stopped
-
-  ai-service:
-    build:
-      context: ./ai-service
-      dockerfile: Dockerfile
-    container_name: finsight-ai-service
-    ports:
-      - "8000:8000"
-    environment:
-      - PYTHONUNBUFFERED=1
-      - ENV=production
-    networks:
-      - finsight-network
-    restart: unless-stopped
-
-  postgres:
-    image: postgres:15-alpine
-    container_name: finsight-postgres
-    ports:
-      - "5432:5432"
-    environment:
-      - POSTGRES_DB=finsight
-      - POSTGRES_USER=finsight_user
-      - POSTGRES_PASSWORD=finsight_password
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - finsight-network
-    restart: unless-stopped
-
-networks:
-  finsight-network:
-    driver: bridge
-
-volumes:
-  postgres_data:
+      - "4200:80"
