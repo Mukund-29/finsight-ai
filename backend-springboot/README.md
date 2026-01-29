@@ -2,6 +2,8 @@
 
 Spring Boot backend service for Finsight AI application.
 
+**Author:** Mukund Kute
+
 ## Features
 
 - RESTful API with FlowAiController

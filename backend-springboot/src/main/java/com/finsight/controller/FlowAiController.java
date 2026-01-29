@@ -7,6 +7,11 @@ import org.springframework.web.bind.annotation.*;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Flow AI Controller
+ * 
+ * @author Mukund Kute
+ */
 @RestController
 @RequestMapping("/api/flow-ai")
 @CrossOrigin(origins = "*")

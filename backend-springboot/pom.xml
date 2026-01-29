@@ -18,6 +18,12 @@
     <name>Finsight Backend</name>
     <description>Spring Boot backend for Finsight AI</description>
     
+    <developers>
+        <developer>
+            <name>Mukund Kute</name>
+        </developer>
+    </developers>
+    
     <properties>
         <java.version>17</java.version>
         <maven.compiler.source>17</maven.compiler.source>
