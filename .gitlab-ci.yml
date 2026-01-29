@@ -1,0 +1,123 @@
+stages:
+  - build
+  - test
+  - docker-build
+  - deploy
+
+variables:
+  MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
+  JAVA_VERSION: "17"
+
+# Cache Maven dependencies
+cache:
+  paths:
+    - .m2/repository/
+    - backend-springboot/target/
+
+# Backend Build Job
+backend:build:
+  stage: build
+  image: maven:3.9-eclipse-temurin-17
+  only:
+    changes:
+      - backend-springboot/**/*
+      - .gitlab-ci.yml
+  script:
+    - cd backend-springboot
+    - mvn clean compile
+  artifacts:
+    paths:
+      - backend-springboot/target/
+    expire_in: 1 hour
+
+# Backend Test Job
+backend:test:
+  stage: test
+  image: maven:3.9-eclipse-temurin-17
+  only:
+    changes:
+      - backend-springboot/**/*
+      - .gitlab-ci.yml
+  script:
+    - cd backend-springboot
+    - mvn test
+  artifacts:
+    reports:
+      junit:
+        - backend-springboot/target/surefire-reports/TEST-*.xml
+    expire_in: 1 week
+
+# Backend Package Job
+backend:package:
+  stage: build
+  image: maven:3.9-eclipse-temurin-17
+  only:
+    changes:
+      - backend-springboot/**/*
+      - .gitlab-ci.yml
+  script:
+    - cd backend-springboot
+    - mvn package -DskipTests
+  artifacts:
+    paths:
+      - backend-springboot/target/*.jar
+    expire_in: 1 day
+
+# Docker Build Job
+backend:docker:
+  stage: docker-build
+  image: docker:24
+  services:
+    - docker:24-dind
+  only:
+    changes:
+      - backend-springboot/**/*
+      - backend-springboot/Dockerfile
+      - .gitlab-ci.yml
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - cd backend-springboot
+    - docker build -t $CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHORT_SHA -t $CI_REGISTRY_IMAGE/backend:latest .
+    - docker push $CI_REGISTRY_IMAGE/backend:$CI_COMMIT_SHORT_SHA
+    - docker push $CI_REGISTRY_IMAGE/backend:latest
+  after_script:
+    - docker logout $CI_REGISTRY
+
+# Frontend Build Job (if needed)
+frontend:build:
+  stage: build
+  image: node:20
+  only:
+    changes:
+      - frontend-angular/**/*
+      - .gitlab-ci.yml
+  script:
+    - cd frontend-angular
+    - npm ci
+    - npm run build
+  artifacts:
+    paths:
+      - frontend-angular/dist/
+    expire_in: 1 hour
+
+# Frontend Docker Build Job
+frontend:docker:
+  stage: docker-build
+  image: docker:24
+  services:
+    - docker:24-dind
+  only:
+    changes:
+      - frontend-angular/**/*
+      - frontend-angular/Dockerfile
+      - .gitlab-ci.yml
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - cd frontend-angular
+    - docker build -t $CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA -t $CI_REGISTRY_IMAGE/frontend:latest .
+    - docker push $CI_REGISTRY_IMAGE/frontend:$CI_COMMIT_SHORT_SHA
+    - docker push $CI_REGISTRY_IMAGE/frontend:latest
+  after_script:
+    - docker logout $CI_REGISTRY
