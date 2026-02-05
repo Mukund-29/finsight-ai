@@ -12,7 +12,13 @@ info.app.description=Spring Boot backend for Finsight AI
 info.app.version=1.0.0
 info.app.author=Mukund Kute
 
-
+# Database Configuration
+# Set these via environment variables or application-local.properties
+# DO NOT commit actual credentials to git
+# spring.datasource.url=jdbc:oracle:thin:@host:port:database
+# spring.datasource.username=your_username
+# spring.datasource.password=your_password
+# spring.datasource.driver-class-name=oracle.jdbc.OracleDriver
 
 # JPA Configuration
 spring.jpa.hibernate.ddl-auto=update

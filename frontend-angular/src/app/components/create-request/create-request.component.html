@@ -1,0 +1,119 @@
+<div class="create-request-container">
+  <!-- Loading Overlay -->
+  @if (isLoading) {
+    <div class="loading-overlay">
+      <div class="loading-content">
+        <div class="spinner"></div>
+        <p>Creating request...</p>
+        <p class="loading-subtitle">Please wait, do not click again</p>
+      </div>
+    </div>
+  }
+  
+  <div class="create-request-card" [class.loading-blur]="isLoading">
+    <div class="card-header">
+      <h1>Create New Request</h1>
+      <button class="btn-close" (click)="cancel()">✕</button>
+    </div>
+
+    <form (ngSubmit)="onSubmit()" class="create-form">
+      <div class="form-group">
+        <label for="title">Title <span class="required">*</span></label>
+        <input
+          type="text"
+          id="title"
+          name="title"
+          [(ngModel)]="requestData.title"
+          placeholder="Enter request title"
+          required
+          maxlength="200"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="description">Description</label>
+        <textarea
+          id="description"
+          name="description"
+          [(ngModel)]="requestData.description"
+          placeholder="Enter detailed description"
+          rows="5"
+        ></textarea>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="requestType">Request Type <span class="required">*</span></label>
+          <select
+            id="requestType"
+            name="requestType"
+            [(ngModel)]="requestData.requestType"
+            required
+          >
+            @for (type of requestTypes; track type.value) {
+              <option [value]="type.value">{{ type.label }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="priority">Priority <span class="required">*</span></label>
+          <select
+            id="priority"
+            name="priority"
+            [(ngModel)]="requestData.priority"
+            required
+          >
+            @for (priority of priorities; track priority.value) {
+              <option [value]="priority.value">{{ priority.label }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="accountId">Account <span class="required">*</span></label>
+        <select
+          id="accountId"
+          name="accountId"
+          [(ngModel)]="requestData.accountId"
+          required
+        >
+          <option [value]="null">Select account</option>
+          @if (isLoadingAccounts) {
+            <option disabled>Loading accounts...</option>
+          } @else {
+            @for (account of accounts; track account.accountId) {
+              <option [value]="account.accountId">{{ account.accountName }}</option>
+            }
+          }
+        </select>
+      </div>
+
+      @if (errorMessage) {
+        <div class="error-message">
+          {{ errorMessage }}
+        </div>
+      }
+
+      @if (successMessage) {
+        <div class="success-message">
+          {{ successMessage }}
+        </div>
+      }
+
+      <div class="form-actions">
+        <button type="button" class="btn-cancel" (click)="cancel()" [disabled]="isLoading">
+          Cancel
+        </button>
+        <button type="submit" class="btn-submit" [disabled]="isLoading">
+          @if (isLoading) {
+            <span>Creating...</span>
+          } @else {
+            <span>Create Request</span>
+          }
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

@@ -36,3 +36,13 @@ build/
 .mvn/
 mvnw
 mvnw.cmd
+
+### Environment and Local Config Files ###
+application-local.properties
+application-*.properties
+!application.properties.example
+!application-h2.properties
+*.env
+.env
+.env.local
+.env.*.local

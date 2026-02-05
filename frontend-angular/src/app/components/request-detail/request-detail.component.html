@@ -1,0 +1,301 @@
+<div class="request-detail-container">
+  <!-- Global Loading Overlay -->
+  @if (isLoading) {
+    <div class="loading-overlay">
+      <div class="loading-content">
+        <div class="spinner"></div>
+        <p>Processing...</p>
+        <p class="loading-subtitle">Please wait, do not click again</p>
+      </div>
+    </div>
+  }
+  
+  @if (isLoading && !request) {
+    <div class="loading-container">
+      <div class="spinner"></div>
+      <p>Loading request details...</p>
+    </div>
+  } @else if (errorMessage && !request) {
+    <div class="error-container">
+      <div class="error-message">{{ errorMessage }}</div>
+      <button class="btn-back" (click)="goBack()">Go Back to Dashboard</button>
+    </div>
+  } @else if (request) {
+    <div class="detail-header">
+      <button class="btn-back" (click)="goBack()" [disabled]="isLoading">← Back</button>
+      <div class="header-actions">
+        @if (canAssignRequest()) {
+          <button class="btn-assign" (click)="showAssignForm()">
+            Assign Ticket
+          </button>
+        }
+        @if (canUpdateStatus()) {
+          <button class="btn-update-status" (click)="showStatusUpdateForm()">
+            Update Status
+          </button>
+        }
+        @if (canDeleteRequest()) {
+          <button class="btn-delete" (click)="deleteRequest()" [disabled]="isLoading">
+            Delete Request
+          </button>
+        }
+      </div>
+    </div>
+
+    <div class="request-detail-card">
+      <div class="card-header">
+        <div class="header-left">
+          <span class="request-id">#{{ request.requestId }}</span>
+          <h1>{{ request.title }}</h1>
+        </div>
+        <div class="header-right">
+          <span class="priority-badge" [ngClass]="getPriorityClass(request.priority)">
+            {{ request.priority }}
+          </span>
+          <span class="status-badge" [ngClass]="getStatusClass(request.status)">
+            {{ request.status }}
+          </span>
+        </div>
+      </div>
+
+      <div class="card-body">
+        <div class="detail-section">
+          <h3>Description</h3>
+          <p class="description">{{ request.description || 'No description provided' }}</p>
+        </div>
+
+        <div class="detail-grid">
+          <div class="detail-item">
+            <label>Request Type</label>
+            <span>{{ request.requestType }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Priority</label>
+            <span class="priority-badge" [ngClass]="getPriorityClass(request.priority)">
+              {{ request.priority }}
+            </span>
+          </div>
+          <div class="detail-item">
+            <label>Status</label>
+            <span class="status-badge" [ngClass]="getStatusClass(request.status)">
+              {{ request.status }}
+            </span>
+          </div>
+          <div class="detail-item">
+            <label>Created By</label>
+            <span>{{ request.createdBy }}</span>
+          </div>
+          <div class="detail-item assigned-to-item">
+            <label>Assigned To</label>
+            @if (request.assignedTo) {
+              <span class="assigned-user">{{ request.assignedTo }}</span>
+            } @else {
+              <span class="not-assigned">Not assigned</span>
+            }
+          </div>
+          @if (request.assignedBy) {
+            <div class="detail-item">
+              <label>Assigned By</label>
+              <span class="assigned-by">{{ request.assignedBy }}</span>
+            </div>
+          }
+          <div class="detail-item">
+            <label>Created At</label>
+            <span>{{ request.createdAt | date:'medium' }}</span>
+          </div>
+          @if (request.assignedAt) {
+            <div class="detail-item">
+              <label>Assigned At</label>
+              <span>{{ request.assignedAt | date:'medium' }}</span>
+            </div>
+          }
+          @if (request.eta) {
+            <div class="detail-item">
+              <label>ETA</label>
+              <span [ngClass]="{'eta-exceeded': request.etaExceeded, 'eta-approaching': request.etaApproaching}">
+                {{ request.eta | date:'medium' }}
+                @if (request.etaExceeded) {
+                  <span class="eta-warning">⚠️ Exceeded</span>
+                } @else if (request.etaApproaching) {
+                  <span class="eta-warning">⏰ Approaching</span>
+                }
+              </span>
+            </div>
+          }
+        </div>
+
+        <div class="timer-section">
+          <h3>Time Tracking</h3>
+          <div class="timer-grid">
+            @if (request.timeInOpenQueue) {
+              <div class="timer-item">
+                <label>Time in Open Queue</label>
+                <span>{{ request.timeInOpenQueue }}</span>
+              </div>
+            }
+            @if (request.timeInDeveloperQueue) {
+              <div class="timer-item">
+                <label>Time in Developer Queue</label>
+                <span>{{ request.timeInDeveloperQueue }}</span>
+              </div>
+            }
+            @if (request.timeUntilEta) {
+              <div class="timer-item">
+                <label>Time Until ETA</label>
+                <span [ngClass]="{'eta-exceeded': request.etaExceeded, 'eta-approaching': request.etaApproaching}">
+                  {{ request.timeUntilEta }}
+                </span>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Comments Section (Placeholder for future implementation) -->
+        <div class="comments-section">
+          <h3>Comments</h3>
+          <div class="comments-placeholder">
+            <p>Comments feature will be implemented in the next phase.</p>
+            <p>For now, you can use the status update comment field.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Assignment Modal -->
+    @if (showAssignModal) {
+      <div class="modal-overlay" (click)="showAssignModal = false">
+        <div class="modal-content" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <h2>Assign Ticket</h2>
+            <button class="btn-close" (click)="showAssignModal = false">✕</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="assignedTo">Assign To <span class="required">*</span></label>
+              <select
+                id="assignedTo"
+                name="assignedTo"
+                [(ngModel)]="assignmentData.assignedTo"
+                required
+                [disabled]="isLoadingUsers"
+              >
+                <option value="">Select a user</option>
+                @if (isLoadingUsers) {
+                  <option disabled>Loading users...</option>
+                } @else {
+                  @for (user of assignableUsers; track user.ntid) {
+                    <option [value]="user.ntid">
+                      {{ user.ntid }} ({{ user.role }}) - {{ user.email }}
+                    </option>
+                  }
+                }
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="eta">ETA <span class="required">*</span></label>
+              @if (!showEtaPicker && assignmentData.eta) {
+                <div class="eta-display">
+                  <span>{{ assignmentData.eta | date:'medium' }}</span>
+                  <button type="button" class="btn-edit-eta" (click)="showEtaPicker = true">Edit</button>
+                </div>
+              } @else {
+                <div class="eta-picker">
+                  <div class="eta-inputs">
+                    <div class="eta-input-group">
+                      <label for="etaDate">Date</label>
+                      <input
+                        type="date"
+                        id="etaDate"
+                        name="etaDate"
+                        [(ngModel)]="assignmentData.etaDate"
+                        [min]="getMinDate()"
+                        required
+                      />
+                    </div>
+                    <div class="eta-input-group">
+                      <label for="etaTime">Time</label>
+                      <input
+                        type="time"
+                        id="etaTime"
+                        name="etaTime"
+                        [(ngModel)]="assignmentData.etaTime"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <button type="button" class="btn-done" (click)="setEta()" [disabled]="!assignmentData.etaDate || !assignmentData.etaTime">
+                    Done
+                  </button>
+                </div>
+              }
+            </div>
+            @if (errorMessage) {
+              <div class="error-message">{{ errorMessage }}</div>
+            }
+          </div>
+          <div class="modal-footer">
+            <button class="btn-cancel" (click)="showAssignModal = false">Cancel</button>
+            <button class="btn-submit" (click)="assignRequest()" [disabled]="isLoading || isLoadingUsers">
+              @if (isLoading) {
+                <span>Assigning...</span>
+              } @else {
+                <span>Assign Ticket</span>
+              }
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- Status Update Modal -->
+    @if (showStatusUpdate) {
+      <div class="modal-overlay" (click)="showStatusUpdate = false">
+        <div class="modal-content" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <h2>Update Status</h2>
+            <button class="btn-close" (click)="showStatusUpdate = false">✕</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="status">New Status <span class="required">*</span></label>
+              <select
+                id="status"
+                name="status"
+                [(ngModel)]="statusUpdate.status"
+                required
+              >
+                <option value="">Select status</option>
+                @for (status of availableStatuses; track status.value) {
+                  <option [value]="status.value">{{ status.label }}</option>
+                }
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="comment">Comment</label>
+              <textarea
+                id="comment"
+                name="comment"
+                [(ngModel)]="statusUpdate.comment"
+                placeholder="Add a comment (optional)"
+                rows="4"
+              ></textarea>
+            </div>
+            @if (errorMessage) {
+              <div class="error-message">{{ errorMessage }}</div>
+            }
+          </div>
+          <div class="modal-footer">
+            <button class="btn-cancel" (click)="showStatusUpdate = false">Cancel</button>
+            <button class="btn-submit" (click)="updateStatus()" [disabled]="isLoading">
+              @if (isLoading) {
+                <span>Updating...</span>
+              } @else {
+                <span>Update Status</span>
+              }
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+  }
+</div>

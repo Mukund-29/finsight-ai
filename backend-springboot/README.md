@@ -6,18 +6,27 @@ Spring Boot backend service for Finsight AI application.
 
 ## Features
 
-- RESTful API with FlowAiController
-- Health check endpoints
+- RESTful API with Authentication & User Management
+- Health check endpoints (Actuator)
 - Docker support
 - CI/CD integration (GitHub Actions & GitLab CI)
+- Oracle Database integration
 
 ## API Endpoints
 
-### FlowAiController
+### Authentication (`/api/auth`)
 
-- `GET /api/flow-ai/health` - Health check endpoint
-- `GET /api/flow-ai/status` - Service status
-- `POST /api/flow-ai/process` - Process flow AI requests
+- `POST /api/auth/register` - User registration
+- `POST /api/auth/login` - User login
+
+### User Management (`/api/users`)
+
+- `GET /api/users/{ntid}` - Get user by NTID
+- `POST /api/users/admin` - Create admin user (ADMIN only)
+- `DELETE /api/users/{ntid}` - Delete user (ADMIN only)
+- `PUT /api/users/{ntid}/role` - Update user role (ADMIN only)
+
+See `AUTHENTICATION.md` for detailed API documentation.
 
 ## Local Development
 
@@ -84,15 +93,29 @@ backend-springboot/
 │   ├── main/
 │   │   ├── java/com/finsight/
 │   │   │   ├── controller/
-│   │   │   │   └── FlowAiController.java
+│   │   │   │   ├── AuthController.java
+│   │   │   │   └── UserController.java
+│   │   │   ├── service/
+│   │   │   │   ├── AuthenticationService.java
+│   │   │   │   └── UserService.java
+│   │   │   ├── entity/
+│   │   │   │   ├── User.java
+│   │   │   │   └── UserRole.java
+│   │   │   ├── repository/
+│   │   │   │   └── UserRepository.java
+│   │   │   ├── dto/
+│   │   │   │   ├── UserRegistrationDTO.java
+│   │   │   │   ├── LoginRequestDTO.java
+│   │   │   │   └── AuthResponseDTO.java
+│   │   │   ├── config/
+│   │   │   │   └── SecurityConfig.java
 │   │   │   └── FinsightApplication.java
 │   │   └── resources/
 │   │       └── application.properties
 │   └── test/
-│       └── java/com/finsight/
-│           └── controller/
-│               └── FlowAiControllerTest.java
 ├── Dockerfile
 ├── pom.xml
-└── README.md
+├── README.md
+├── AUTHENTICATION.md
+└── POSTMAN_COLLECTION.md
 ```

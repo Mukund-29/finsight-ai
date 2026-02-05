@@ -1,0 +1,14 @@
+-- Add ASSIGNED_BY column to FLOWAI_REQUESTS table
+-- Run this script on your Oracle database
+
+ALTER TABLE FLOWAI_REQUESTS 
+ADD ASSIGNED_BY VARCHAR2(50);
+
+-- Optional: Add comment to the column
+COMMENT ON COLUMN FLOWAI_REQUESTS.ASSIGNED_BY IS 'NTID of the user who assigned this ticket (SCRUM_MASTER or ADMIN)';
+
+-- Verify the column was added
+SELECT COLUMN_NAME, DATA_TYPE, DATA_LENGTH, NULLABLE 
+FROM USER_TAB_COLUMNS 
+WHERE TABLE_NAME = 'FLOWAI_REQUESTS' 
+AND COLUMN_NAME = 'ASSIGNED_BY';

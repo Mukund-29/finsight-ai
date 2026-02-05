@@ -1,0 +1,253 @@
+<div class="dashboard-container">
+  <!-- Header -->
+  <div class="dashboard-header">
+    <div class="header-left">
+      <h1>Finsight Dashboard</h1>
+      <p class="welcome-text">Welcome back, {{ user?.ntid }}!</p>
+    </div>
+    <div class="header-right">
+      <button class="btn-refresh" (click)="refresh()" [disabled]="isLoading">
+        <span class="icon">🔄</span> Refresh
+      </button>
+      <button class="btn-create" (click)="createRequest()">
+        <span class="icon">+</span> Create Request
+      </button>
+      <button class="btn-logout" (click)="logout()">Logout</button>
+    </div>
+  </div>
+
+  <!-- Error Message -->
+  @if (errorMessage) {
+    <div class="error-banner">
+      {{ errorMessage }}
+    </div>
+  }
+
+  <!-- Loading State -->
+  @if (isLoading) {
+    <div class="loading-container">
+      <div class="spinner"></div>
+      <p>Loading requests...</p>
+    </div>
+  }
+
+  <!-- Dashboard Content -->
+  @if (!isLoading) {
+    <div class="dashboard-content">
+      <!-- Charts Section -->
+      <div class="charts-section">
+        <div class="chart-card">
+          <h3 class="chart-title">Status Distribution</h3>
+          <div class="chart-container">
+            @if (statusChartData.length === 0) {
+              <div class="empty-chart">No data available</div>
+            } @else {
+              <div class="bar-chart">
+                @for (item of statusChartData; track item.status) {
+                  <div class="bar-item">
+                    <div class="bar-label">
+                      <span class="label-text">{{ item.status }}</span>
+                      <span class="label-count">{{ item.count }}</span>
+                    </div>
+                    <div class="bar-wrapper">
+                      <div class="bar-fill" [style.width.%]="item.percentage" [ngClass]="'bar-' + item.status.toLowerCase().replace('_', '-')">
+                        <span class="bar-percentage">{{ item.percentage.toFixed(1) }}%</span>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <h3 class="chart-title">Priority Distribution</h3>
+          <div class="chart-container">
+            @if (priorityChartData.length === 0) {
+              <div class="empty-chart">No data available</div>
+            } @else {
+              <div class="bar-chart">
+                @for (item of priorityChartData; track item.priority) {
+                  <div class="bar-item">
+                    <div class="bar-label">
+                      <span class="label-text">{{ item.priority }}</span>
+                      <span class="label-count">{{ item.count }}</span>
+                    </div>
+                    <div class="bar-wrapper">
+                      <div class="bar-fill" [style.width.%]="item.percentage" [ngClass]="'bar-' + item.priority.toLowerCase()">
+                        <span class="bar-percentage">{{ item.percentage.toFixed(1) }}%</span>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- All Open Tickets Section -->
+      <div class="section">
+        <div class="section-header">
+          <h2>
+            <span class="section-icon">📂</span>
+            All Open Tickets
+          </h2>
+          <span class="badge">{{ openRequests.length }}</span>
+        </div>
+        <div class="requests-grid">
+          @if (openRequests.length === 0) {
+            <div class="empty-state">
+              <p>No open tickets available</p>
+            </div>
+          } @else {
+            @for (request of openRequests; track request.requestId) {
+              <div class="request-card" (click)="viewRequest(request.requestId)">
+                <div class="card-header">
+                  <span class="request-id">#{{ request.requestId }}</span>
+                  <span class="priority-badge" [ngClass]="getPriorityClass(request.priority)">
+                    {{ request.priority }}
+                  </span>
+                </div>
+                <h3 class="request-title">{{ request.title }}</h3>
+                <div class="request-meta">
+                  <span class="status-badge" [ngClass]="getStatusClass(request.status)">
+                    {{ request.status }}
+                  </span>
+                  <span class="request-type">{{ request.requestType }}</span>
+                </div>
+                <div class="request-footer">
+                  <span class="time-info">Created by: {{ request.createdBy }}</span>
+                  @if (request.timeInOpenQueue) {
+                    <span class="time-info">In queue: {{ request.timeInOpenQueue }}</span>
+                  }
+                </div>
+              </div>
+            }
+          }
+        </div>
+      </div>
+
+      <!-- ASSIGNED Tickets Section (visible to all users) -->
+      <div class="section">
+          <div class="section-header">
+            <h2>
+              <span class="section-icon">📌</span>
+              ASSIGNED Tickets
+            </h2>
+            <span class="badge">{{ assignedRequests.length }}</span>
+          </div>
+          <div class="requests-grid">
+            @if (assignedRequests.length === 0) {
+              <div class="empty-state">
+                <p>No assigned tickets</p>
+              </div>
+            } @else {
+              @for (request of assignedRequests; track request.requestId) {
+                <div class="request-card" (click)="viewRequest(request.requestId)">
+                  <div class="card-header">
+                    <span class="request-id">#{{ request.requestId }}</span>
+                    <span class="priority-badge" [ngClass]="getPriorityClass(request.priority)">
+                      {{ request.priority }}
+                    </span>
+                  </div>
+                  <h3 class="request-title">{{ request.title }}</h3>
+                  <div class="request-meta">
+                    <span class="status-badge" [ngClass]="getStatusClass(request.status)">
+                      {{ request.status }}
+                    </span>
+                    <span class="request-type">{{ request.requestType }}</span>
+                  </div>
+                  @if (request.assignedTo) {
+                    <div class="assigned-info">
+                      Assigned to: {{ request.assignedTo }}
+                    </div>
+                  }
+                  @if (request.assignedBy) {
+                    <div class="assigned-by-info">
+                      Assigned by: {{ request.assignedBy }}
+                    </div>
+                  }
+                  @if (request.etaApproaching || request.etaExceeded) {
+                    <div class="eta-alert" [ngClass]="{'eta-exceeded': request.etaExceeded}">
+                      @if (request.etaExceeded) {
+                        ⚠️ ETA Exceeded
+                      } @else {
+                        ⏰ ETA Approaching: {{ request.timeUntilEta }}
+                      }
+                    </div>
+                  }
+                  <div class="request-footer">
+                    <span class="time-info">In queue: {{ request.timeInDeveloperQueue }}</span>
+                  </div>
+                </div>
+              }
+            }
+          </div>
+      </div>
+
+      <!-- My Tickets Section (Tickets created by me) -->
+      <div class="section">
+        <div class="section-header">
+          <h2>
+            <span class="section-icon">📝</span>
+            My Tickets
+          </h2>
+          <span class="badge">{{ myRequests.length }}</span>
+        </div>
+        <div class="requests-grid">
+          @if (myRequests.length === 0) {
+            <div class="empty-state">
+              <p>You haven't created any tickets yet</p>
+              <button class="btn-create-small" (click)="createRequest()">Create Your First Ticket</button>
+            </div>
+          } @else {
+            @for (request of myRequests; track request.requestId) {
+              <div class="request-card" (click)="viewRequest(request.requestId)">
+                <div class="card-header">
+                  <span class="request-id">#{{ request.requestId }}</span>
+                  <span class="priority-badge" [ngClass]="getPriorityClass(request.priority)">
+                    {{ request.priority }}
+                  </span>
+                </div>
+                <h3 class="request-title">{{ request.title }}</h3>
+                <div class="request-meta">
+                  <span class="status-badge" [ngClass]="getStatusClass(request.status)">
+                    {{ request.status }}
+                  </span>
+                  <span class="request-type">{{ request.requestType }}</span>
+                </div>
+                @if (request.assignedTo) {
+                  <div class="assigned-info">
+                    Assigned to: {{ request.assignedTo }}
+                  </div>
+                }
+                @if (request.assignedBy) {
+                  <div class="assigned-by-info">
+                    Assigned by: {{ request.assignedBy }}
+                  </div>
+                }
+                @if (request.etaApproaching || request.etaExceeded) {
+                  <div class="eta-alert" [ngClass]="{'eta-exceeded': request.etaExceeded}">
+                    @if (request.etaExceeded) {
+                      ⚠️ ETA Exceeded
+                    } @else {
+                      ⏰ ETA Approaching: {{ request.timeUntilEta }}
+                    }
+                  </div>
+                }
+                <div class="request-footer">
+                  @if (request.timeInDeveloperQueue) {
+                    <span class="time-info">In queue: {{ request.timeInDeveloperQueue }}</span>
+                  }
+                  <span class="time-info">Created: {{ request.createdAt | date:'short' }}</span>
+                </div>
+              </div>
+            }
+          }
+        </div>
+      </div>
+    </div>
+  }
+</div>
