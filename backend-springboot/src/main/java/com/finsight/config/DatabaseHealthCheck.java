@@ -23,14 +23,20 @@ public class DatabaseHealthCheck implements CommandLineRunner {
 
     private static final Logger logger = LoggerFactory.getLogger(DatabaseHealthCheck.class);
 
-    @Autowired
+    @Autowired(required = false)
     private DataSource dataSource;
 
-    @Autowired
+    @Autowired(required = false)
     private JdbcTemplate jdbcTemplate;
 
     @Override
     public void run(String... args) throws Exception {
+        // Check if DataSource is available
+        if (dataSource == null) {
+            logger.warn("DataSource is not configured - skipping database health check");
+            return;
+        }
+        
         try (Connection connection = dataSource.getConnection()) {
             DatabaseMetaData metaData = connection.getMetaData();
             String databaseProductName = metaData.getDatabaseProductName();

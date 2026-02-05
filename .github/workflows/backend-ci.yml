@@ -63,8 +63,17 @@ jobs:
 
     - name: Test Docker image
       run: |
-        docker run -d -p 8081:8081 --name test-backend finsight-backend:latest
-        sleep 15
-        curl -f http://localhost:8081/actuator/health || exit 1
+        docker run -d -p 8081:8081 --name test-backend \
+          -e SPRING_PROFILES_ACTIVE=h2 \
+          -e SPRING_DATASOURCE_URL=jdbc:h2:mem:testdb \
+          -e SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.h2.Driver \
+          -e SPRING_DATASOURCE_USERNAME=sa \
+          -e SPRING_DATASOURCE_PASSWORD= \
+          -e SPRING_JPA_HIBERNATE_DDL_AUTO=update \
+          -e SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT=org.hibernate.dialect.H2Dialect \
+          finsight-backend:latest
+        sleep 20
+        docker logs test-backend
+        curl -f http://localhost:8081/actuator/health || (docker logs test-backend && exit 1)
         docker stop test-backend
         docker rm test-backend
