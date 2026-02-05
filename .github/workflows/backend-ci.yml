@@ -65,6 +65,6 @@ jobs:
       run: |
         docker run -d -p 8081:8081 --name test-backend finsight-backend:latest
         sleep 15
-        curl -f http://localhost:8081/api/flow-ai/health || exit 1
+        curl -f http://localhost:8081/actuator/health || exit 1
         docker stop test-backend
         docker rm test-backend
