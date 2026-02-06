@@ -17,6 +17,9 @@ export class RequestDetailComponent implements OnInit {
   request: Request | null = null;
   requestId: number = 0;
   isLoading = false;
+  isAssigning = false;
+  isUpdatingStatus = false;
+  isDeleting = false;
   errorMessage = '';
   
   // Status update
@@ -175,6 +178,7 @@ export class RequestDetailComponent implements OnInit {
       return;
     }
 
+    this.isAssigning = true;
     this.isLoading = true;
     this.errorMessage = '';
 
@@ -185,12 +189,14 @@ export class RequestDetailComponent implements OnInit {
 
     this.requestService.assignRequest(this.requestId, assignData, this.user.ntid).subscribe({
       next: (response) => {
+        this.isAssigning = false;
         this.isLoading = false;
         this.showAssignModal = false;
         this.assignmentData = { assignedTo: '', etaDate: '', etaTime: '', eta: '' };
         this.loadRequest(); // Reload to get updated data
       },
       error: (error) => {
+        this.isAssigning = false;
         this.isLoading = false;
         this.errorMessage = error.error?.error || 'Failed to assign request';
         console.error('Assign request error:', error);
@@ -203,16 +209,19 @@ export class RequestDetailComponent implements OnInit {
       return;
     }
 
+    this.isDeleting = true;
     this.isLoading = true;
     this.errorMessage = '';
 
     this.requestService.deleteRequest(this.requestId, this.user.ntid).subscribe({
       next: (response) => {
+        this.isDeleting = false;
         this.isLoading = false;
         alert('Request deleted successfully. You can now create a new request if needed.');
         this.router.navigate(['/dashboard']);
       },
       error: (error) => {
+        this.isDeleting = false;
         this.isLoading = false;
         this.errorMessage = error.error?.error || 'Failed to delete request';
         console.error('Delete request error:', error);
@@ -233,6 +242,7 @@ export class RequestDetailComponent implements OnInit {
       return;
     }
 
+    this.isUpdatingStatus = true;
     this.isLoading = true;
     this.errorMessage = '';
 
@@ -243,12 +253,14 @@ export class RequestDetailComponent implements OnInit {
 
     this.requestService.updateStatus(this.requestId, updateData, this.user.ntid).subscribe({
       next: (response) => {
+        this.isUpdatingStatus = false;
         this.isLoading = false;
         this.showStatusUpdate = false;
         this.statusUpdate = { status: '', comment: '' };
         this.loadRequest(); // Reload to get updated data
       },
       error: (error) => {
+        this.isUpdatingStatus = false;
         this.isLoading = false;
         this.errorMessage = error.error?.error || 'Failed to update status';
         console.error('Update status error:', error);
@@ -280,8 +292,8 @@ export class RequestDetailComponent implements OnInit {
   }
 
   goBack() {
-    // Prevent navigation if request is processing
-    if (this.isLoading) {
+    // Prevent navigation if any request is processing
+    if (this.isLoading || this.isAssigning || this.isUpdatingStatus || this.isDeleting) {
       return;
     }
     this.router.navigate(['/dashboard']);

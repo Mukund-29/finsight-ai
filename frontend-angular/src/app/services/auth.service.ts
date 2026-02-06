@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
 
 export interface LoginRequest {
   ntid: string;
@@ -33,7 +34,7 @@ export interface AuthResponse {
   providedIn: 'root'
 })
 export class AuthService {
-  private apiUrl = 'http://localhost:8081/api/auth';
+  private apiUrl = `${environment.apiUrl}/auth`;
 
   constructor(private http: HttpClient) {}
 
@@ -56,7 +57,7 @@ export class AuthService {
   }
 
   getActiveAccounts(): Observable<Account[]> {
-    return this.http.get<any>(`http://localhost:8081/api/accounts/active`, {
+    return this.http.get<any>(`${environment.apiUrl}/accounts/active`, {
       headers: new HttpHeaders({ 'Content-Type': 'application/json' })
     }).pipe(
       // Handle both array response and object with accounts property
@@ -74,14 +75,14 @@ export class AuthService {
 
   // Test endpoint to check if accounts API is working
   testAccounts(): Observable<any> {
-    return this.http.get(`http://localhost:8081/api/accounts/test`, {
+    return this.http.get(`${environment.apiUrl}/accounts/test`, {
       headers: new HttpHeaders({ 'Content-Type': 'application/json' })
     });
   }
 
   // Alternative endpoint to get all accounts
   getAllAccounts(): Observable<Account[]> {
-    return this.http.get<Account[]>(`http://localhost:8081/api/accounts/all`, {
+    return this.http.get<Account[]>(`${environment.apiUrl}/accounts/all`, {
       headers: new HttpHeaders({ 'Content-Type': 'application/json' })
     });
   }

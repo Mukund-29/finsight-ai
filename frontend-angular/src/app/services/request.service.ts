@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { environment } from '../../environments/environment';
 
 export interface Request {
   requestId: number;
@@ -55,7 +56,7 @@ export interface UpdateStatus {
   providedIn: 'root'
 })
 export class RequestService {
-  private apiUrl = 'http://localhost:8081/api/requests';
+  private apiUrl = `${environment.apiUrl}/requests`;
 
   constructor(private http: HttpClient) {}
 
@@ -140,7 +141,7 @@ export class RequestService {
   }
 
   getAssignableUsers(userNtid: string, role?: string): Observable<User[]> {
-    let url = `http://localhost:8081/api/users`;
+    let url = `${environment.apiUrl}/users`;
     if (role) {
       url += `?role=${role}`;
     }

@@ -1,7 +1,40 @@
 version: "3.8"
 
 services:
+  backend:
+    build: ./backend-springboot
+    container_name: finsight-backend
+    ports:
+      - "${BACKEND_PORT:-8081}:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILE:-local}
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL:-jdbc:oracle:thin:@indlin4661:1521:INDDB001}
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME:-SSTOPR1}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD:-SSTOPR1}
+      - SPRING_DATASOURCE_DRIVER_CLASS_NAME=${SPRING_DATASOURCE_DRIVER_CLASS_NAME:-oracle.jdbc.OracleDriver}
+      - SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA=${SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA:-SSTOPR1}
+    restart: unless-stopped
+    networks:
+      - finsight-network
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 8081 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
   frontend:
     build: ./frontend-angular
+    container_name: finsight-frontend
     ports:
-      - "4200:80"
+      - "${FRONTEND_PORT:-4200}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - finsight-network
+
+networks:
+  finsight-network:
+    driver: bridge

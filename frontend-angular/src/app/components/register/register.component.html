@@ -1,5 +1,16 @@
 <div class="register-container">
-  <div class="register-card">
+  <!-- Loading Overlay -->
+  @if (isLoading) {
+    <div class="loading-overlay">
+      <div class="loading-content">
+        <div class="spinner"></div>
+        <p>Creating account...</p>
+        <p class="loading-subtitle">Please wait, do not click again</p>
+      </div>
+    </div>
+  }
+  
+  <div class="register-card" [class.loading-blur]="isLoading">
     <div class="register-header">
       <h1>Create Account</h1>
       <p>Sign up to get started</p>

@@ -7,6 +7,7 @@ import com.finsight.entity.UserRole;
 import com.finsight.repository.AccountRepository;
 import com.finsight.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +26,9 @@ public class UserService {
 
     @Autowired
     private AccountRepository accountRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     /**
      * Register new user (creates USER role by default)
@@ -67,6 +71,10 @@ public class UserService {
         Long accountId = account.getAccountId();
         System.out.println("  [UserService] Found account ID: " + accountId);
 
+        // Hash password before storing
+        String hashedPassword = passwordEncoder.encode(registrationDTO.getPassword());
+        System.out.println("  [UserService] Password hashed successfully");
+
         // Create new user with USER role
         System.out.println("  [UserService] Creating new User object...");
         User user = new User(
@@ -74,7 +82,7 @@ public class UserService {
             registrationDTO.getEmail(),
             accountName,
             accountId,
-            registrationDTO.getPassword()
+            hashedPassword
         );
         user.setRole(UserRole.USER); // Default role is USER
         System.out.println("  [UserService] User object created with role: " + user.getRole());
@@ -144,13 +152,16 @@ public class UserService {
             .orElseThrow(() -> new RuntimeException("Account not found: " + accountName));
         Long accountId = account.getAccountId();
 
+        // Hash password before storing
+        String hashedPassword = passwordEncoder.encode(registrationDTO.getPassword());
+
         // Create admin user
         User user = new User(
             ntid,
             registrationDTO.getEmail(),
             accountName,
             accountId,
-            registrationDTO.getPassword()
+            hashedPassword
         );
         user.setRole(UserRole.ADMIN);
 

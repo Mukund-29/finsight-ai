@@ -4,7 +4,15 @@
     <div class="loading-overlay">
       <div class="loading-content">
         <div class="spinner"></div>
-        <p>Processing...</p>
+        @if (isAssigning) {
+          <p>Assigning ticket...</p>
+        } @else if (isUpdatingStatus) {
+          <p>Updating status...</p>
+        } @else if (isDeleting) {
+          <p>Deleting request...</p>
+        } @else {
+          <p>Processing...</p>
+        }
         <p class="loading-subtitle">Please wait, do not click again</p>
       </div>
     </div>
@@ -22,21 +30,25 @@
     </div>
   } @else if (request) {
     <div class="detail-header">
-      <button class="btn-back" (click)="goBack()" [disabled]="isLoading">← Back</button>
+      <button class="btn-back" (click)="goBack()" [disabled]="isLoading || isAssigning || isUpdatingStatus || isDeleting">← Back</button>
       <div class="header-actions">
         @if (canAssignRequest()) {
-          <button class="btn-assign" (click)="showAssignForm()">
+          <button class="btn-assign" (click)="showAssignForm()" [disabled]="isLoading || isAssigning || isUpdatingStatus || isDeleting">
             Assign Ticket
           </button>
         }
         @if (canUpdateStatus()) {
-          <button class="btn-update-status" (click)="showStatusUpdateForm()">
+          <button class="btn-update-status" (click)="showStatusUpdateForm()" [disabled]="isLoading || isAssigning || isUpdatingStatus || isDeleting">
             Update Status
           </button>
         }
         @if (canDeleteRequest()) {
-          <button class="btn-delete" (click)="deleteRequest()" [disabled]="isLoading">
-            Delete Request
+          <button class="btn-delete" (click)="deleteRequest()" [disabled]="isLoading || isDeleting">
+            @if (isDeleting) {
+              <span>Deleting...</span>
+            } @else {
+              <span>Delete Request</span>
+            }
           </button>
         }
       </div>
@@ -234,9 +246,9 @@
             }
           </div>
           <div class="modal-footer">
-            <button class="btn-cancel" (click)="showAssignModal = false">Cancel</button>
-            <button class="btn-submit" (click)="assignRequest()" [disabled]="isLoading || isLoadingUsers">
-              @if (isLoading) {
+            <button class="btn-cancel" (click)="showAssignModal = false" [disabled]="isAssigning">Cancel</button>
+            <button class="btn-submit" (click)="assignRequest()" [disabled]="isAssigning || isLoadingUsers">
+              @if (isAssigning) {
                 <span>Assigning...</span>
               } @else {
                 <span>Assign Ticket</span>
@@ -285,9 +297,9 @@
             }
           </div>
           <div class="modal-footer">
-            <button class="btn-cancel" (click)="showStatusUpdate = false">Cancel</button>
-            <button class="btn-submit" (click)="updateStatus()" [disabled]="isLoading">
-              @if (isLoading) {
+            <button class="btn-cancel" (click)="showStatusUpdate = false" [disabled]="isUpdatingStatus">Cancel</button>
+            <button class="btn-submit" (click)="updateStatus()" [disabled]="isUpdatingStatus">
+              @if (isUpdatingStatus) {
                 <span>Updating...</span>
               } @else {
                 <span>Update Status</span>

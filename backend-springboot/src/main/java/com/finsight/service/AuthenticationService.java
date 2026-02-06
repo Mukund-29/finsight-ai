@@ -6,7 +6,9 @@ import com.finsight.entity.User;
 import com.finsight.entity.UserRole;
 import com.finsight.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Authentication Service
@@ -18,6 +20,9 @@ public class AuthenticationService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     /**
      * Authenticate user
@@ -60,11 +65,22 @@ public class AuthenticationService {
                 throw new RuntimeException("Invalid credentials");
             }
         } else {
-            // Users with password stored - validate password
-            // TODO: Add password hashing (BCrypt) in future
-            if (!storedPassword.equals(providedPassword)) {
-                System.out.println("  [AuthenticationService] ERROR: Invalid password");
-                throw new RuntimeException("Invalid credentials");
+            // Check if password is hashed (starts with $2a$, $2b$, or $2y$ for BCrypt)
+            if (storedPassword.startsWith("$2a$") || storedPassword.startsWith("$2b$") || storedPassword.startsWith("$2y$")) {
+                // Password is hashed - use BCrypt to verify
+                if (!passwordEncoder.matches(providedPassword, storedPassword)) {
+                    System.out.println("  [AuthenticationService] ERROR: Invalid password (hashed)");
+                    throw new RuntimeException("Invalid credentials");
+                }
+            } else {
+                // Legacy plain text password - verify directly, then update to hashed
+                if (!storedPassword.equals(providedPassword)) {
+                    System.out.println("  [AuthenticationService] ERROR: Invalid password (plain text)");
+                    throw new RuntimeException("Invalid credentials");
+                }
+                // Migrate to hashed password
+                System.out.println("  [AuthenticationService] Migrating plain text password to hashed");
+                updatePasswordToHashed(user, providedPassword);
             }
         }
         
@@ -78,6 +94,17 @@ public class AuthenticationService {
             generateToken(user.getNtid(), user.getRole()),
             "Authentication successful"
         );
+    }
+
+    /**
+     * Update user password from plain text to hashed (migration helper)
+     */
+    @Transactional
+    private void updatePasswordToHashed(User user, String plainPassword) {
+        String hashedPassword = passwordEncoder.encode(plainPassword);
+        user.setPassword(hashedPassword);
+        userRepository.save(user);
+        System.out.println("  [AuthenticationService] Password migrated to hashed format");
     }
 
     /**
