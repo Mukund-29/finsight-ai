@@ -1,0 +1,7 @@
+﻿*.tar
+.tmp-*.tar*
+
+# Build artifacts
+*.tar
+.tmp-*.tar*
+*.tar.gz
