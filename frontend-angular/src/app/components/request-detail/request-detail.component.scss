@@ -35,6 +35,36 @@
     gap: 12px;
   }
 
+  .btn-assign,
+  .btn-update-status,
+  .btn-delete {
+    position: relative;
+    min-width: 120px;
+
+    .btn-content {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .btn-spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      display: inline-block;
+    }
+
+    &:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+  }
+
   .btn-assign {
     background: #36b37e;
     color: white;
@@ -45,7 +75,7 @@
     font-size: 14px;
     font-weight: 500;
 
-    &:hover {
+    &:hover:not(:disabled) {
       background: #2ea66b;
     }
   }
@@ -60,7 +90,7 @@
     font-size: 14px;
     font-weight: 500;
 
-    &:hover {
+    &:hover:not(:disabled) {
       background: #0065ff;
     }
   }
@@ -77,11 +107,6 @@
 
     &:hover:not(:disabled) {
       background: #bf2600;
-    }
-
-    &:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
     }
   }
 }
@@ -304,24 +329,297 @@
   padding-top: 30px;
   border-top: 1px solid #dfe1e6;
 
-  h3 {
-    margin: 0 0 16px 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: #172b4d;
+  .comments-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+
+    h3 {
+      margin: 0;
+      color: #172b4d;
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .btn-add-comment {
+      background: #0052cc;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+
+      .btn-content {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .btn-spinner {
+        width: 14px;
+        height: 14px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+
+      &:hover:not(:disabled) {
+        background: #0065ff;
+      }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+    }
   }
-}
 
-.comments-placeholder {
-  background: #f4f5f7;
-  padding: 20px;
-  border-radius: 6px;
-  text-align: center;
-  color: #6b778c;
+  .comments-loading {
+    padding: 40px;
+    text-align: center;
+    color: #6b778c;
 
-  p {
-    margin: 8px 0;
+    .spinner-small {
+      width: 24px;
+      height: 24px;
+      border: 3px solid #f4f5f7;
+      border-top-color: #0052cc;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 12px;
+    }
+
+    p {
+      margin: 0;
+      font-size: 14px;
+    }
+  }
+
+  .comments-empty {
+    padding: 40px;
+    text-align: center;
+    background: #f4f5f7;
+    border-radius: 8px;
+    color: #6b778c;
     font-size: 14px;
+
+    p {
+      margin: 0;
+    }
+  }
+
+  .comments-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .comment-item {
+    background: white;
+    border: 1px solid #dfe1e6;
+    border-radius: 8px;
+    padding: 16px;
+    transition: all 0.2s;
+
+    &:hover {
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    &.eta-change-comment {
+      border-left: 4px solid #0052cc;
+      background: #f4f9ff;
+    }
+
+    .comment-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+
+      .comment-author {
+        font-weight: 600;
+        color: #172b4d;
+        font-size: 14px;
+      }
+
+      .comment-date {
+        color: #6b778c;
+        font-size: 12px;
+      }
+
+      .eta-change-badge {
+        background: #0052cc;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+    }
+
+    .comment-body {
+      .comment-text {
+        margin: 0 0 12px 0;
+        color: #172b4d;
+        font-size: 14px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+
+      .eta-change-details {
+        background: white;
+        border: 1px solid #dfe1e6;
+        border-radius: 6px;
+        padding: 12px;
+        margin-top: 12px;
+
+        .eta-change-info {
+          margin: 0 0 8px 0;
+          font-size: 13px;
+          color: #172b4d;
+
+          .old-eta {
+            color: #ff5630;
+            text-decoration: line-through;
+            margin: 0 4px;
+          }
+
+          .new-eta {
+            color: #36b37e;
+            font-weight: 600;
+            margin: 0 4px;
+          }
+        }
+
+        .change-reason {
+          margin: 0;
+          font-size: 13px;
+          color: #6b778c;
+          font-style: italic;
+        }
+      }
+    }
+  }
+
+  .add-comment-form {
+    margin-top: 20px;
+    padding: 20px;
+    background: #f4f5f7;
+    border-radius: 8px;
+    border: 1px solid #dfe1e6;
+    scroll-margin-top: 20px;
+    animation: slideIn 0.3s ease-out;
+
+    .form-group {
+      margin-bottom: 16px;
+
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 500;
+        color: #172b4d;
+        font-size: 14px;
+      }
+
+      textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid #dfe1e6;
+        border-radius: 6px;
+        font-size: 14px;
+        font-family: inherit;
+        resize: vertical;
+        transition: border-color 0.2s;
+
+        &:focus {
+          outline: none;
+          border-color: #0052cc;
+        }
+
+        &:disabled {
+          background: #f4f5f7;
+          cursor: not-allowed;
+        }
+      }
+    }
+
+    .form-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+
+      .btn-cancel {
+        background: #f4f5f7;
+        color: #42526e;
+        border: 1px solid #dfe1e6;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+
+        &:hover:not(:disabled) {
+          background: #e1e4e8;
+        }
+
+        &:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+      }
+
+      .btn-submit {
+        background: #0052cc;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+
+        .btn-content {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .btn-spinner {
+          width: 14px;
+          height: 14px;
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          border-top-color: white;
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+        }
+
+        &:hover:not(:disabled) {
+          background: #0065ff;
+        }
+
+        &:disabled {
+          opacity: 0.6;
+          cursor: not-allowed;
+        }
+      }
+    }
   }
 }
 
@@ -532,10 +830,50 @@
   .btn-submit {
     background: #0052cc;
     color: white;
+    position: relative;
+    min-width: 120px;
+
+    .btn-content {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      justify-content: center;
+    }
+
+    .btn-spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      display: inline-block;
+    }
 
     &:hover:not(:disabled) {
       background: #0065ff;
     }
+
+    &:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+  }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
@@ -611,6 +949,40 @@
 
     &:hover {
       background: #0065ff;
+    }
+  }
+}
+
+.eta-display-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+
+  span {
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .btn-edit-eta-small {
+    background: #0052cc;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+
+    &:hover:not(:disabled) {
+      background: #0065ff;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
     }
   }
 }

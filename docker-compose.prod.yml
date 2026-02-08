@@ -1,0 +1,46 @@
+version: "3.8"
+
+# Production docker-compose.yml
+# This file uses 'image:' instead of 'build:' to use pre-built images
+# Copy this to docker-compose.yml on production server after loading images
+
+services:
+  backend:
+    image: finsight-backend:latest  # Use pre-built image
+    container_name: finsight-backend
+    ports:
+      - "${BACKEND_PORT:-8081}:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILE:-local}
+      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL:-jdbc:oracle:thin:@indlin4661:1521:INDDB001}
+      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME:-SSTOPR1}
+      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD:-SSTOPR1}
+      - SPRING_DATASOURCE_DRIVER_CLASS_NAME=${SPRING_DATASOURCE_DRIVER_CLASS_NAME:-oracle.jdbc.OracleDriver}
+      - SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA=${SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA:-SSTOPR1}
+    restart: unless-stopped
+    networks:
+      - finsight-network
+    extra_hosts:
+      - "indlin4661:10.20.232.38"
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 8081 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    image: finsight-frontend:latest  # Use pre-built image
+    container_name: finsight-frontend
+    ports:
+      - "${FRONTEND_PORT:-4200}:80"
+    depends_on:
+      backend:
+        condition: service_started
+    restart: unless-stopped
+    networks:
+      - finsight-network
+
+networks:
+  finsight-network:
+    driver: bridge

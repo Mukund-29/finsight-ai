@@ -3,6 +3,7 @@ package com.finsight.controller;
 import com.finsight.dto.UserRegistrationDTO;
 import com.finsight.entity.User;
 import com.finsight.entity.UserRole;
+import com.finsight.repository.UserAccountRepository;
 import com.finsight.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -10,8 +11,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -26,6 +29,9 @@ public class UserController {
 
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private UserAccountRepository userAccountRepository;
 
     /**
      * Get user by NTID
@@ -156,10 +162,14 @@ public class UserController {
     /**
      * Get all users (for assignment dropdown)
      * Returns list of users that can be assigned tickets (DEVELOPER, ADMIN, or all users based on role)
+     * If accountId is provided, filters users to those belonging to that account (direct or via junction table)
+     * Also includes the user specified by createdByNtid if provided
      */
     @GetMapping
     public ResponseEntity<?> getAllUsers(
             @RequestParam(required = false) UserRole role,
+            @RequestParam(required = false) Long accountId,
+            @RequestParam(required = false) String createdByNtid,
             @RequestHeader(value = "X-User-NTID", required = false) String requestedBy) {
         
         System.out.println("\n=========================================");
@@ -184,19 +194,46 @@ public class UserController {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
             }
 
-            // Get all active users, filter by role if specified
-            List<User> allUsers = userService.getAllActiveUsers();
+            // Get all users (both active and inactive) for user management, filter by role if specified
+            List<User> allUsers = userService.getAllUsers();
             
             List<User> filteredUsers = allUsers;
-            if (role != null) {
-                // If role filter is specified, filter by that role
+            
+            // Filter by accountId if provided (for ticket assignment)
+            if (accountId != null) {
+                System.out.println("Filtering users by accountId: " + accountId);
+                Set<String> eligibleNtids = new HashSet<>();
+                
+                // 1. Add users with direct accountId match
+                allUsers.stream()
+                    .filter(u -> u.getAccountId() != null && u.getAccountId().equals(accountId))
+                    .forEach(u -> eligibleNtids.add(u.getNtid()));
+                
+                // 2. Add users from junction table with this accountId
+                List<String> junctionNtids = userAccountRepository.findByAccountIdAndActiveTrue(accountId)
+                    .stream()
+                    .map(ua -> ua.getNtid())
+                    .collect(Collectors.toList());
+                eligibleNtids.addAll(junctionNtids);
+                
+                // 3. Add the user who created the ticket (if provided)
+                if (createdByNtid != null && !createdByNtid.trim().isEmpty()) {
+                    eligibleNtids.add(createdByNtid.trim());
+                }
+                
+                System.out.println("Eligible users for account " + accountId + ": " + eligibleNtids.size());
+                
+                // Filter users to only those eligible
                 filteredUsers = allUsers.stream()
+                    .filter(u -> eligibleNtids.contains(u.getNtid()))
+                    .collect(Collectors.toList());
+            }
+            
+            // Apply role filter if specified
+            if (role != null) {
+                filteredUsers = filteredUsers.stream()
                     .filter(u -> u.getRole() == role)
                     .collect(Collectors.toList());
-            } else {
-                // No role filter: return ALL active users (for assignment dropdown)
-                // SCRUM_MASTER and ADMIN can assign tickets to any user
-                filteredUsers = allUsers;
             }
             
             List<Map<String, Object>> responseList = filteredUsers.stream()
@@ -207,6 +244,7 @@ public class UserController {
                     userMap.put("role", user.getRole());
                     userMap.put("account", user.getAccount());
                     userMap.put("accountId", user.getAccountId());
+                    userMap.put("active", user.getActive());
                     return userMap;
                 })
                 .collect(Collectors.toList());
@@ -262,6 +300,60 @@ public class UserController {
             System.out.println("Response: " + response);
             System.out.println("=========================================\n");
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
+            
+        } catch (Exception e) {
+            System.out.println("ERROR: " + e.getMessage());
+            e.printStackTrace();
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            System.out.println("Response: " + error);
+            System.out.println("=========================================\n");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        }
+    }
+
+    /**
+     * Update user details (ADMIN and SCRUM_MASTER only)
+     * Can update: NTID, email, account, role, active status
+     * Cannot update: password
+     */
+    @PutMapping("/{ntid}")
+    public ResponseEntity<?> updateUser(
+            @PathVariable String ntid,
+            @RequestBody com.finsight.dto.UpdateUserDTO updateDTO,
+            @RequestHeader(value = "X-User-NTID", required = false) String requestedBy) {
+        
+        System.out.println("\n=========================================");
+        System.out.println("API CALLED: PUT /api/users/" + ntid);
+        System.out.println("Request Header - X-User-NTID: " + requestedBy);
+        System.out.println("Update Data:");
+        System.out.println("  - NTID: " + updateDTO.getNtid());
+        System.out.println("  - Email: " + updateDTO.getEmail());
+        System.out.println("  - Account: " + updateDTO.getAccount());
+        System.out.println("  - Role: " + updateDTO.getRole());
+        System.out.println("  - Active: " + updateDTO.getActive());
+        
+        try {
+            if (requestedBy == null || requestedBy.trim().isEmpty()) {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "User NTID is required in header X-User-NTID");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+            }
+
+            User updatedUser = userService.updateUserDetails(ntid, updateDTO, requestedBy);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "User updated successfully");
+            response.put("ntid", updatedUser.getNtid());
+            response.put("email", updatedUser.getEmail());
+            response.put("role", updatedUser.getRole());
+            response.put("account", updatedUser.getAccount());
+            response.put("accountId", updatedUser.getAccountId());
+            response.put("active", updatedUser.getActive());
+            
+            System.out.println("Response: " + response);
+            System.out.println("=========================================\n");
+            return ResponseEntity.ok(response);
             
         } catch (Exception e) {
             System.out.println("ERROR: " + e.getMessage());

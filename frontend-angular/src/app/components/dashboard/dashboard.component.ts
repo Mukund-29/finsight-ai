@@ -16,12 +16,20 @@ export class DashboardComponent implements OnInit {
   openRequests: Request[] = [];
   assignedRequests: Request[] = [];
   myRequests: Request[] = [];
+  
+  // Displayed requests (limited to 6)
+  displayedOpenRequests: Request[] = [];
+  displayedAssignedRequests: Request[] = [];
+  displayedMyRequests: Request[] = [];
+  
   isLoading = false;
   errorMessage = '';
   
   // Chart data
   statusChartData: { status: string; count: number; percentage: number }[] = [];
   priorityChartData: { priority: string; count: number; percentage: number }[] = [];
+  
+  readonly MAX_DISPLAY = 6;
 
   constructor(
     private authService: AuthService,
@@ -60,6 +68,7 @@ export class DashboardComponent implements OnInit {
     this.requestService.getRequests(this.user.ntid, { status: 'OPEN' }).subscribe({
       next: (requests) => {
         this.openRequests = requests;
+        this.displayedOpenRequests = requests.slice(0, this.MAX_DISPLAY);
       },
       error: (error) => {
         console.error('Error loading open requests:', error);
@@ -81,6 +90,7 @@ export class DashboardComponent implements OnInit {
             return r.assignedTo.trim().toLowerCase() === this.user.ntid.trim().toLowerCase();
           });
         }
+        this.displayedAssignedRequests = this.assignedRequests.slice(0, this.MAX_DISPLAY);
       },
       error: (error) => {
         console.error('Error loading assigned requests:', error);
@@ -95,6 +105,7 @@ export class DashboardComponent implements OnInit {
           if (!r.createdBy) return false;
           return r.createdBy.trim().toLowerCase() === this.user.ntid.trim().toLowerCase();
         });
+        this.displayedMyRequests = this.myRequests.slice(0, this.MAX_DISPLAY);
         console.log('My Tickets (created by user):', this.myRequests.length, 'tickets');
       },
       error: (error) => {
@@ -179,5 +190,34 @@ export class DashboardComponent implements OnInit {
   logout() {
     this.authService.logout();
     this.router.navigate(['/login']);
+  }
+
+  navigateToUserManagement() {
+    this.router.navigate(['/dashboard/users']);
+  }
+
+  navigateToStatistics() {
+    this.router.navigate(['/dashboard/statistics']);
+  }
+
+  navigateToAllTickets() {
+    this.router.navigate(['/dashboard/tickets/all']);
+  }
+
+  viewAllTickets(type: string) {
+    this.router.navigate(['/dashboard/tickets', type]);
+  }
+
+  hasMoreTickets(type: string): boolean {
+    switch (type) {
+      case 'open':
+        return this.openRequests.length > this.MAX_DISPLAY;
+      case 'assigned':
+        return this.assignedRequests.length > this.MAX_DISPLAY;
+      case 'my':
+        return this.myRequests.length > this.MAX_DISPLAY;
+      default:
+        return false;
+    }
   }
 }

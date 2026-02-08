@@ -6,6 +6,17 @@
       <p class="welcome-text">Welcome back, {{ user?.ntid }}!</p>
     </div>
     <div class="header-right">
+      @if (user?.role === 'ADMIN' || user?.role === 'SCRUM_MASTER') {
+        <button class="btn-users" (click)="navigateToUserManagement()" [disabled]="isLoading">
+          <span class="icon">👥</span> User Management
+        </button>
+      }
+      <button class="btn-statistics" (click)="navigateToStatistics()" [disabled]="isLoading">
+        <span class="icon">📊</span> Stats
+      </button>
+      <button class="btn-all-tickets" (click)="navigateToAllTickets()" [disabled]="isLoading">
+        <span class="icon">📋</span> All Tickets
+      </button>
       <button class="btn-refresh" (click)="refresh()" [disabled]="isLoading">
         <span class="icon">🔄</span> Refresh
       </button>
@@ -94,15 +105,22 @@
             <span class="section-icon">📂</span>
             All Open Tickets
           </h2>
-          <span class="badge">{{ openRequests.length }}</span>
+          <div class="header-right-section">
+            <span class="badge">{{ openRequests.length }}</span>
+            @if (hasMoreTickets('open')) {
+              <button class="btn-view-all" (click)="viewAllTickets('open')">
+                View All
+              </button>
+            }
+          </div>
         </div>
         <div class="requests-grid">
-          @if (openRequests.length === 0) {
+          @if (displayedOpenRequests.length === 0) {
             <div class="empty-state">
               <p>No open tickets available</p>
             </div>
           } @else {
-            @for (request of openRequests; track request.requestId) {
+            @for (request of displayedOpenRequests; track request.requestId) {
               <div class="request-card" (click)="viewRequest(request.requestId)">
                 <div class="card-header">
                   <span class="request-id">#{{ request.requestId }}</span>
@@ -136,15 +154,22 @@
               <span class="section-icon">📌</span>
               ASSIGNED Tickets
             </h2>
-            <span class="badge">{{ assignedRequests.length }}</span>
+            <div class="header-right-section">
+              <span class="badge">{{ assignedRequests.length }}</span>
+              @if (hasMoreTickets('assigned')) {
+                <button class="btn-view-all" (click)="viewAllTickets('assigned')">
+                  View All
+                </button>
+              }
+            </div>
           </div>
           <div class="requests-grid">
-            @if (assignedRequests.length === 0) {
+            @if (displayedAssignedRequests.length === 0) {
               <div class="empty-state">
                 <p>No assigned tickets</p>
               </div>
             } @else {
-              @for (request of assignedRequests; track request.requestId) {
+              @for (request of displayedAssignedRequests; track request.requestId) {
                 <div class="request-card" (click)="viewRequest(request.requestId)">
                   <div class="card-header">
                     <span class="request-id">#{{ request.requestId }}</span>
@@ -194,16 +219,23 @@
             <span class="section-icon">📝</span>
             My Tickets
           </h2>
-          <span class="badge">{{ myRequests.length }}</span>
+          <div class="header-right-section">
+            <span class="badge">{{ myRequests.length }}</span>
+            @if (hasMoreTickets('my')) {
+              <button class="btn-view-all" (click)="viewAllTickets('my')">
+                View All
+              </button>
+            }
+          </div>
         </div>
         <div class="requests-grid">
-          @if (myRequests.length === 0) {
+          @if (displayedMyRequests.length === 0) {
             <div class="empty-state">
               <p>You haven't created any tickets yet</p>
               <button class="btn-create-small" (click)="createRequest()">Create Your First Ticket</button>
             </div>
           } @else {
-            @for (request of myRequests; track request.requestId) {
+            @for (request of displayedMyRequests; track request.requestId) {
               <div class="request-card" (click)="viewRequest(request.requestId)">
                 <div class="card-header">
                   <span class="request-id">#{{ request.requestId }}</span>

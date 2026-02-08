@@ -1,0 +1,216 @@
+<div class="user-statistics-container">
+  <!-- Header -->
+  <div class="header">
+    <button class="btn-back" (click)="viewMode === 'tickets' ? goBackToUsers() : (viewMode === 'users' ? goBackToAccounts() : goBack())">
+      @if (viewMode === 'tickets') {
+        ← Back to Users
+      } @else if (viewMode === 'users') {
+        ← Back to Accounts
+      } @else {
+        ← Back to Dashboard
+      }
+    </button>
+    <h1>Stats</h1>
+    <button class="btn-refresh" (click)="refresh()" [disabled]="isLoading">
+      <span class="icon">🔄</span> Refresh
+    </button>
+  </div>
+
+  <!-- Filter Title (shown when viewing tickets) -->
+  @if (viewMode === 'tickets' && filterTitle) {
+    <div class="filter-header">
+      <h2>{{ filterTitle }} - {{ selectedUserNtid }}</h2>
+      <p class="user-email">{{ selectedUserEmail }}</p>
+    </div>
+  }
+
+  <!-- Error Message -->
+  @if (errorMessage) {
+    <div class="error-banner">
+      {{ errorMessage }}
+    </div>
+  }
+
+  <!-- Loading State -->
+  @if (isLoading) {
+    <div class="loading-container">
+      <div class="spinner"></div>
+      <p>Loading statistics...</p>
+    </div>
+  }
+
+  <!-- Account Statistics View -->
+  @if (viewMode === 'accounts' && !isLoading) {
+    <div class="statistics-container">
+      @if (accountStats.length === 0) {
+        <div class="empty-state">
+          <p>No account statistics available</p>
+        </div>
+      } @else {
+        <div class="table-wrapper">
+          <table class="statistics-table">
+            <thead>
+              <tr>
+                <th>Account</th>
+                <th>Total</th>
+                <th>Resolved</th>
+                <th>In Progress</th>
+                <th>On Hold</th>
+                <th>Open Tickets</th>
+                <th>Crossed ETA</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (account of accountStats; track account.accountId) {
+                <tr class="account-row" (click)="viewAccountUsers(account)">
+                  <td class="account-cell">
+                    <strong>{{ account.accountName }}</strong>
+                  </td>
+                  <td class="stat-cell total">
+                    <span class="stat-value">{{ account.totalTickets }}</span>
+                  </td>
+                  <td class="stat-cell resolved">
+                    <span class="stat-value">{{ account.resolvedTickets }}</span>
+                  </td>
+                  <td class="stat-cell pending">
+                    <span class="stat-value">{{ account.pendingTickets }}</span>
+                  </td>
+                  <td class="stat-cell onhold">
+                    <span class="stat-value">{{ account.onHoldTickets }}</span>
+                  </td>
+                  <td class="stat-cell open">
+                    <span class="stat-value">{{ account.openTickets }}</span>
+                  </td>
+                  <td class="stat-cell crossed-eta">
+                    <span class="stat-value">{{ account.crossedEtaTickets }}</span>
+                  </td>
+                  <td>
+                    <button class="btn-view-users" (click)="viewAccountUsers(account); $event.stopPropagation()">
+                      View Users
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- User Statistics View (by Account) -->
+  @if (viewMode === 'users' && !isLoading) {
+    <div class="statistics-container">
+      <div class="account-header">
+        <h2>Users in {{ selectedAccountName }}</h2>
+      </div>
+      @if (userStats.length === 0) {
+        <div class="empty-state">
+          <p>No user statistics available for this account</p>
+        </div>
+      } @else {
+        <div class="table-wrapper">
+          <table class="statistics-table">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Email</th>
+                <th>Total</th>
+                <th>Resolved</th>
+                <th>In Progress</th>
+                <th>On Hold</th>
+                <th>Crossed ETA</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (stat of userStats; track stat.ntid) {
+                <tr>
+                  <td class="user-cell">
+                    <strong>{{ stat.ntid }}</strong>
+                  </td>
+                  <td>{{ stat.email }}</td>
+                  <td class="stat-cell total">
+                    <span class="stat-value clickable" (click)="viewTickets(stat, 'total', $event)">{{ stat.totalTickets }}</span>
+                  </td>
+                  <td class="stat-cell resolved">
+                    <span class="stat-value clickable" (click)="viewTickets(stat, 'resolved', $event)">{{ stat.resolvedTickets }}</span>
+                  </td>
+                  <td class="stat-cell pending">
+                    <span class="stat-value clickable" (click)="viewTickets(stat, 'pending', $event)">{{ stat.pendingTickets }}</span>
+                  </td>
+                  <td class="stat-cell onhold">
+                    <span class="stat-value clickable" (click)="viewTickets(stat, 'onHold', $event)">{{ stat.onHoldTickets }}</span>
+                  </td>
+                  <td class="stat-cell crossed-eta">
+                    <span class="stat-value clickable" (click)="viewTickets(stat, 'crossedEta', $event)">{{ stat.crossedEtaTickets }}</span>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Filtered Tickets View -->
+  @if (viewMode === 'tickets' && !isLoading) {
+    <div class="statistics-container">
+      @if (filteredTickets.length === 0) {
+        <div class="empty-state">
+          <p>No tickets found for this filter</p>
+        </div>
+      } @else {
+        <div class="tickets-grid">
+          @for (ticket of filteredTickets; track ticket.requestId) {
+            <div class="request-card" (click)="viewRequest(ticket.requestId)">
+              <div class="card-header">
+                <span class="request-id">#{{ ticket.requestId }}</span>
+                <span class="priority-badge" [ngClass]="getPriorityClass(ticket.priority)">
+                  {{ ticket.priority }}
+                </span>
+              </div>
+              <h3 class="request-title">{{ ticket.title }}</h3>
+              <div class="request-meta">
+                <span class="status-badge" [ngClass]="getStatusClass(ticket.status)">
+                  {{ ticket.status }}
+                </span>
+                <span class="request-type">{{ ticket.requestType }}</span>
+              </div>
+              @if (ticket.assignedTo) {
+                <div class="assigned-info">
+                  Assigned to: {{ ticket.assignedTo }}
+                </div>
+              }
+              @if (ticket.assignedBy) {
+                <div class="assigned-by-info">
+                  Assigned by: {{ ticket.assignedBy }}
+                </div>
+              }
+              @if (ticket.etaApproaching || ticket.etaExceeded) {
+                <div class="eta-alert" [ngClass]="{'eta-exceeded': ticket.etaExceeded}">
+                  @if (ticket.etaExceeded) {
+                    ⚠️ ETA Exceeded
+                  } @else {
+                    ⏰ ETA Approaching: {{ ticket.timeUntilEta }}
+                  }
+                </div>
+              }
+              <div class="request-footer">
+                <span class="time-info">Created by: {{ ticket.createdBy }}</span>
+                @if (ticket.timeInOpenQueue) {
+                  <span class="time-info">In queue: {{ ticket.timeInOpenQueue }}</span>
+                }
+                @if (ticket.timeInDeveloperQueue) {
+                  <span class="time-info">In dev queue: {{ ticket.timeInDeveloperQueue }}</span>
+                }
+                <span class="time-info">Created: {{ ticket.createdAt | date:'short' }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>

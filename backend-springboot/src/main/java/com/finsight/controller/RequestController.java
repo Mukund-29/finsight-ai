@@ -9,6 +9,7 @@ import com.finsight.entity.RequestPriority;
 import com.finsight.entity.RequestStatus;
 import com.finsight.entity.RequestType;
 import com.finsight.service.RequestService;
+import com.finsight.service.RequestCommentService;
 import com.finsight.service.TimerService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,6 +38,9 @@ public class RequestController {
 
     @Autowired
     private TimerService timerService;
+
+    @Autowired
+    private RequestCommentService commentService;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -480,6 +484,241 @@ public class RequestController {
             System.out.println("Response: " + error);
             System.out.println("=========================================\n");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    /**
+     * Get account statistics (tickets per account)
+     * Available to all users
+     */
+    @GetMapping("/account-statistics")
+    public ResponseEntity<?> getAccountStatistics(
+            @RequestHeader(value = "X-User-NTID", required = false) String userNtid) {
+        
+        System.out.println("\n=========================================");
+        System.out.println("API CALLED: GET /api/requests/account-statistics");
+        System.out.println("Request Header - X-User-NTID: " + userNtid);
+        
+        try {
+            if (userNtid == null || userNtid.trim().isEmpty()) {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "User NTID is required in header X-User-NTID");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+            }
+
+            List<com.finsight.dto.AccountStatsDTO> stats = requestService.getAccountStatistics();
+            
+            System.out.println("Returning statistics for " + stats.size() + " accounts");
+            System.out.println("=========================================\n");
+            return ResponseEntity.ok(stats);
+            
+        } catch (Exception e) {
+            System.out.println("ERROR: " + e.getMessage());
+            e.printStackTrace();
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            System.out.println("Response: " + error);
+            System.out.println("=========================================\n");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    /**
+     * Get user ticket statistics filtered by account
+     * Available to all users
+     */
+    @GetMapping("/user-statistics-by-account/{accountId}")
+    public ResponseEntity<?> getUserStatisticsByAccount(
+            @PathVariable Long accountId,
+            @RequestHeader(value = "X-User-NTID", required = false) String userNtid) {
+        
+        System.out.println("\n=========================================");
+        System.out.println("API CALLED: GET /api/requests/user-statistics-by-account/" + accountId);
+        System.out.println("Request Header - X-User-NTID: " + userNtid);
+        
+        try {
+            if (userNtid == null || userNtid.trim().isEmpty()) {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "User NTID is required in header X-User-NTID");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+            }
+
+            List<com.finsight.dto.UserTicketStatsDTO> stats = requestService.getUserStatisticsByAccount(accountId);
+            
+            System.out.println("Returning statistics for " + stats.size() + " users in account " + accountId);
+            System.out.println("=========================================\n");
+            return ResponseEntity.ok(stats);
+            
+        } catch (Exception e) {
+            System.out.println("ERROR: " + e.getMessage());
+            e.printStackTrace();
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            System.out.println("Response: " + error);
+            System.out.println("=========================================\n");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    /**
+     * Get user ticket statistics (all users)
+     * Available to all users
+     */
+    @GetMapping("/user-statistics")
+    public ResponseEntity<?> getUserTicketStatistics(
+            @RequestHeader(value = "X-User-NTID", required = false) String userNtid) {
+        
+        System.out.println("\n=========================================");
+        System.out.println("API CALLED: GET /api/requests/user-statistics");
+        System.out.println("Request Header - X-User-NTID: " + userNtid);
+        
+        try {
+            if (userNtid == null || userNtid.trim().isEmpty()) {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "User NTID is required in header X-User-NTID");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+            }
+
+            List<com.finsight.dto.UserTicketStatsDTO> stats = requestService.getUserTicketStatistics(userNtid);
+            
+            System.out.println("Returning statistics for " + stats.size() + " users");
+            System.out.println("=========================================\n");
+            return ResponseEntity.ok(stats);
+            
+        } catch (Exception e) {
+            System.out.println("ERROR: " + e.getMessage());
+            e.printStackTrace();
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            System.out.println("Response: " + error);
+            System.out.println("=========================================\n");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    /**
+     * Update ETA for a request
+     */
+    @PutMapping("/{id}/eta")
+    public ResponseEntity<?> updateEta(
+            @PathVariable Long id,
+            @RequestBody String requestBody,
+            @RequestHeader(value = "X-User-NTID", required = false) String userNtid) {
+        
+        System.out.println("\n=========================================");
+        System.out.println("API CALLED: PUT /api/requests/" + id + "/eta");
+        
+        try {
+            if (userNtid == null || userNtid.trim().isEmpty()) {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "User NTID is required in header X-User-NTID");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+            }
+
+            com.finsight.dto.UpdateEtaDTO updateEtaDTO = objectMapper.readValue(requestBody, com.finsight.dto.UpdateEtaDTO.class);
+            System.out.println("ETA Update Data:");
+            System.out.println("  - New ETA: " + updateEtaDTO.getNewEta());
+            System.out.println("  - Reason: " + updateEtaDTO.getChangeReason());
+
+            Request request = requestService.updateEta(id, updateEtaDTO, userNtid);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "ETA updated successfully");
+            response.put("requestId", request.getRequestId());
+            response.put("eta", request.getEta());
+            
+            System.out.println("Response: " + response);
+            System.out.println("=========================================\n");
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            System.out.println("ERROR: " + e.getMessage());
+            e.printStackTrace();
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            System.out.println("Response: " + error);
+            System.out.println("=========================================\n");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+        }
+    }
+
+    /**
+     * Get all comments for a request
+     */
+    @GetMapping("/{id}/comments")
+    public ResponseEntity<?> getComments(
+            @PathVariable Long id,
+            @RequestHeader(value = "X-User-NTID", required = false) String userNtid) {
+        
+        System.out.println("\n=========================================");
+        System.out.println("API CALLED: GET /api/requests/" + id + "/comments");
+        
+        try {
+            if (userNtid == null || userNtid.trim().isEmpty()) {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "User NTID is required in header X-User-NTID");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+            }
+
+            List<com.finsight.dto.CommentDTO> comments = commentService.getCommentsByRequestId(id);
+            
+            System.out.println("Returning " + comments.size() + " comments");
+            System.out.println("=========================================\n");
+            return ResponseEntity.ok(comments);
+            
+        } catch (Exception e) {
+            System.out.println("ERROR: " + e.getMessage());
+            e.printStackTrace();
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            System.out.println("Response: " + error);
+            System.out.println("=========================================\n");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+        }
+    }
+
+    /**
+     * Add a comment to a request
+     */
+    @PostMapping("/{id}/comments")
+    public ResponseEntity<?> addComment(
+            @PathVariable Long id,
+            @RequestBody String requestBody,
+            @RequestHeader(value = "X-User-NTID", required = false) String userNtid) {
+        
+        System.out.println("\n=========================================");
+        System.out.println("API CALLED: POST /api/requests/" + id + "/comments");
+        
+        try {
+            if (userNtid == null || userNtid.trim().isEmpty()) {
+                Map<String, String> error = new HashMap<>();
+                error.put("error", "User NTID is required in header X-User-NTID");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+            }
+
+            com.finsight.dto.CreateCommentDTO createDTO = objectMapper.readValue(requestBody, com.finsight.dto.CreateCommentDTO.class);
+            System.out.println("Comment Data:");
+            System.out.println("  - Comment: " + createDTO.getCommentText());
+            System.out.println("  - Is ETA Change: " + createDTO.getIsEtaChange());
+
+            com.finsight.dto.CommentDTO comment = commentService.addComment(id, createDTO, userNtid);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("message", "Comment added successfully");
+            response.put("comment", comment);
+            
+            System.out.println("Response: " + response);
+            System.out.println("=========================================\n");
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            System.out.println("ERROR: " + e.getMessage());
+            e.printStackTrace();
+            Map<String, String> error = new HashMap<>();
+            error.put("error", e.getMessage());
+            System.out.println("Response: " + error);
+            System.out.println("=========================================\n");
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
         }
     }
 }

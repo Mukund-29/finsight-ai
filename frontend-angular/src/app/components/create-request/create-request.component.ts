@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { AuthService, Account } from '../../services/auth.service';
 import { RequestService } from '../../services/request.service';
+import { CanComponentDeactivate } from '../../guards/can-deactivate.guard';
 
 @Component({
   selector: 'app-create-request',
@@ -12,7 +13,7 @@ import { RequestService } from '../../services/request.service';
   templateUrl: './create-request.component.html',
   styleUrl: './create-request.component.scss'
 })
-export class CreateRequestComponent implements OnInit {
+export class CreateRequestComponent implements OnInit, CanComponentDeactivate {
   user: any = null;
   accounts: Account[] = [];
   
@@ -80,6 +81,11 @@ export class CreateRequestComponent implements OnInit {
   }
 
   onSubmit() {
+    // Prevent multiple clicks
+    if (this.isLoading) {
+      return;
+    }
+
     if (!this.requestData.title.trim()) {
       this.errorMessage = 'Title is required';
       return;
@@ -124,5 +130,23 @@ export class CreateRequestComponent implements OnInit {
       return;
     }
     this.router.navigate(['/dashboard']);
+  }
+
+  canDeactivate(): boolean {
+    // Allow navigation if form is not dirty or request is being processed
+    if (this.isLoading) {
+      return false; // Prevent navigation during submission
+    }
+    
+    // Check if form has unsaved changes
+    const hasChanges = this.requestData.title.trim() || 
+                      this.requestData.description.trim() || 
+                      this.requestData.accountId !== null;
+    
+    if (hasChanges && !this.successMessage) {
+      return confirm('You have unsaved changes. Are you sure you want to leave?');
+    }
+    
+    return true;
   }
 }

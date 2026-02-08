@@ -1,9 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
-import { RequestService, Request, UpdateStatus } from '../../services/request.service';
+import { RequestService, Request, UpdateStatus, Comment, CreateComment } from '../../services/request.service';
 
 @Component({
   selector: 'app-request-detail',
@@ -20,6 +20,7 @@ export class RequestDetailComponent implements OnInit {
   isAssigning = false;
   isUpdatingStatus = false;
   isDeleting = false;
+  isUpdatingEta = false;
   errorMessage = '';
   
   // Status update
@@ -47,6 +48,26 @@ export class RequestDetailComponent implements OnInit {
     eta: '' // Combined datetime
   };
   showEtaPicker = false;
+
+  // ETA Update
+  showEtaUpdateForm = false;
+  etaUpdateData = {
+    etaDate: '',
+    etaTime: '',
+    newEta: '',
+    changeReason: '',
+    commentText: ''
+  };
+
+  // Comments
+  comments: Comment[] = [];
+  isLoadingComments = false;
+  showAddCommentForm = false;
+  newComment = {
+    commentText: ''
+  };
+  isAddingComment = false;
+  @ViewChild('commentForm') commentFormRef?: ElementRef;
 
   constructor(
     private authService: AuthService,
@@ -76,11 +97,115 @@ export class RequestDetailComponent implements OnInit {
       next: (request) => {
         this.request = request;
         this.isLoading = false;
+        this.loadComments(); // Load comments after request is loaded
       },
       error: (error) => {
         console.error('Error loading request:', error);
         this.errorMessage = error.error?.error || 'Failed to load request';
         this.isLoading = false;
+      }
+    });
+  }
+
+  loadComments() {
+    this.isLoadingComments = true;
+    this.requestService.getComments(this.requestId, this.user.ntid).subscribe({
+      next: (comments) => {
+        this.comments = comments;
+        this.isLoadingComments = false;
+      },
+      error: (error) => {
+        console.error('Error loading comments:', error);
+        this.isLoadingComments = false;
+        // Don't show error for comments, just log it
+      }
+    });
+  }
+
+  canAddComment(): boolean {
+    if (!this.request) return false;
+    const role = this.user?.role;
+    
+    // ADMIN can always comment
+    if (role === 'ADMIN') {
+      return true;
+    }
+    
+    // SCRUM_MASTER can comment
+    if (role === 'SCRUM_MASTER') {
+      return true;
+    }
+    
+    // Assigned user can comment
+    if (this.request.assignedTo && this.request.assignedTo === this.user.ntid) {
+      return true;
+    }
+    
+    // Creator can comment
+    if (this.request.createdBy === this.user.ntid) {
+      return true;
+    }
+    
+    return false;
+  }
+
+  showAddComment() {
+    this.showAddCommentForm = true;
+    this.newComment.commentText = '';
+    
+    // Scroll to comment form after a brief delay to ensure DOM is updated
+    setTimeout(() => {
+      if (this.commentFormRef) {
+        this.commentFormRef.nativeElement.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+        // Focus on textarea after scrolling
+        setTimeout(() => {
+          const textarea = this.commentFormRef?.nativeElement.querySelector('textarea');
+          if (textarea) {
+            textarea.focus();
+          }
+        }, 300);
+      }
+    }, 100);
+  }
+
+  cancelAddComment() {
+    this.showAddCommentForm = false;
+    this.newComment.commentText = '';
+  }
+
+  addComment() {
+    // Prevent multiple clicks
+    if (this.isAddingComment || this.isLoading || this.isAssigning || this.isUpdatingStatus || this.isDeleting || this.isUpdatingEta) {
+      return;
+    }
+
+    if (!this.newComment.commentText || this.newComment.commentText.trim() === '') {
+      this.errorMessage = 'Please enter a comment';
+      return;
+    }
+
+    this.isAddingComment = true;
+    this.errorMessage = '';
+
+    const createComment: CreateComment = {
+      commentText: this.newComment.commentText.trim(),
+      isEtaChange: false
+    };
+
+    this.requestService.addComment(this.requestId, createComment, this.user.ntid).subscribe({
+      next: (comment) => {
+        this.isAddingComment = false;
+        this.showAddCommentForm = false;
+        this.newComment.commentText = '';
+        this.loadComments(); // Reload comments
+      },
+      error: (error) => {
+        this.isAddingComment = false;
+        this.errorMessage = error.error?.error || 'Failed to add comment';
+        console.error('Add comment error:', error);
       }
     });
   }
@@ -133,7 +258,122 @@ export class RequestDetailComponent implements OnInit {
            role === 'ADMIN';
   }
 
+  canUpdateEta(): boolean {
+    if (!this.request) return false;
+    const role = this.user?.role;
+    
+    // ADMIN can always update ETA
+    if (role === 'ADMIN') {
+      return true;
+    }
+    
+    // SCRUM_MASTER can update ETA
+    if (role === 'SCRUM_MASTER') {
+      return true;
+    }
+    
+    // Assigned user can update ETA
+    if (this.request.assignedTo && this.request.assignedTo === this.user.ntid) {
+      return true;
+    }
+    
+    return false;
+  }
+
+  showEtaUpdate() {
+    // Prevent multiple clicks
+    if (this.isLoading || this.isAssigning || this.isUpdatingStatus || this.isDeleting || this.isUpdatingEta) {
+      return;
+    }
+    this.errorMessage = '';
+    
+    // Initialize with current ETA if exists
+    if (this.request?.eta) {
+      const etaDate = new Date(this.request.eta);
+      this.etaUpdateData.etaDate = etaDate.toISOString().split('T')[0];
+      this.etaUpdateData.etaTime = etaDate.toTimeString().split(' ')[0].substring(0, 5);
+    } else {
+      this.etaUpdateData.etaDate = '';
+      this.etaUpdateData.etaTime = '';
+    }
+    this.etaUpdateData.newEta = '';
+    this.etaUpdateData.changeReason = '';
+    this.etaUpdateData.commentText = '';
+    this.showEtaUpdateForm = true;
+  }
+
+  setNewEta() {
+    // Combine date and time into ISO format
+    if (this.etaUpdateData.etaDate && this.etaUpdateData.etaTime) {
+      const dateTime = new Date(`${this.etaUpdateData.etaDate}T${this.etaUpdateData.etaTime}`);
+      this.etaUpdateData.newEta = dateTime.toISOString();
+    } else {
+      this.errorMessage = 'Please select both date and time';
+    }
+  }
+
+  updateEta() {
+    // Prevent multiple clicks
+    if (this.isUpdatingEta || this.isLoading || this.isAssigning || this.isUpdatingStatus || this.isDeleting) {
+      return;
+    }
+
+    // Validate required fields
+    if (!this.etaUpdateData.etaDate || !this.etaUpdateData.etaTime) {
+      this.errorMessage = 'Please select both date and time for the new ETA';
+      return;
+    }
+
+    if (!this.etaUpdateData.changeReason || this.etaUpdateData.changeReason.trim() === '') {
+      this.errorMessage = 'Reason for ETA change is required';
+      return;
+    }
+
+    // Set the new ETA
+    this.setNewEta();
+    if (!this.etaUpdateData.newEta) {
+      return;
+    }
+
+    this.isUpdatingEta = true;
+    this.isLoading = true;
+    this.errorMessage = '';
+
+    const updateEtaDTO = {
+      newEta: this.etaUpdateData.newEta,
+      changeReason: this.etaUpdateData.changeReason.trim(),
+      commentText: this.etaUpdateData.commentText?.trim() || ''
+    };
+
+    this.requestService.updateEta(this.requestId, updateEtaDTO, this.user.ntid).subscribe({
+      next: (response) => {
+        this.isUpdatingEta = false;
+        this.isLoading = false;
+        this.showEtaUpdateForm = false;
+        this.etaUpdateData = { etaDate: '', etaTime: '', newEta: '', changeReason: '', commentText: '' };
+        this.loadRequest(); // Reload to get updated data
+        this.loadComments(); // Reload comments to show ETA change comment
+      },
+      error: (error) => {
+        this.isUpdatingEta = false;
+        this.isLoading = false;
+        this.errorMessage = error.error?.error || 'Failed to update ETA';
+        console.error('Update ETA error:', error);
+      }
+    });
+  }
+
+  cancelEtaUpdate() {
+    this.showEtaUpdateForm = false;
+    this.etaUpdateData = { etaDate: '', etaTime: '', newEta: '', changeReason: '', commentText: '' };
+    this.errorMessage = '';
+  }
+
   showAssignForm() {
+    // Prevent multiple clicks
+    if (this.isLoading || this.isAssigning || this.isUpdatingStatus || this.isDeleting) {
+      return;
+    }
     this.errorMessage = '';
     this.assignmentData = { assignedTo: '', etaDate: '', etaTime: '', eta: '' };
     this.showEtaPicker = false;
@@ -143,7 +383,17 @@ export class RequestDetailComponent implements OnInit {
 
   loadAssignableUsers() {
     this.isLoadingUsers = true;
-    this.requestService.getAssignableUsers(this.user.ntid).subscribe({
+    
+    // Get accountId and createdBy from the request to filter users
+    const accountId = this.request?.accountId;
+    const createdByNtid = this.request?.createdBy;
+    
+    this.requestService.getAssignableUsers(
+      this.user.ntid,
+      undefined, // role filter (optional)
+      accountId, // filter by ticket's accountId
+      createdByNtid // include the user who created the ticket
+    ).subscribe({
       next: (users) => {
         this.assignableUsers = users;
         this.isLoadingUsers = false;
@@ -168,6 +418,11 @@ export class RequestDetailComponent implements OnInit {
   }
 
   assignRequest() {
+    // Prevent multiple clicks
+    if (this.isAssigning || this.isLoading || this.isUpdatingStatus || this.isDeleting) {
+      return;
+    }
+
     if (!this.assignmentData.assignedTo) {
       this.errorMessage = 'Please select a user to assign';
       return;
@@ -205,6 +460,11 @@ export class RequestDetailComponent implements OnInit {
   }
 
   deleteRequest() {
+    // Prevent multiple clicks
+    if (this.isDeleting || this.isLoading || this.isAssigning || this.isUpdatingStatus) {
+      return;
+    }
+
     if (!confirm('Are you sure you want to delete this request? This action cannot be undone.')) {
       return;
     }
@@ -237,6 +497,11 @@ export class RequestDetailComponent implements OnInit {
   }
 
   updateStatus() {
+    // Prevent multiple clicks
+    if (this.isUpdatingStatus || this.isLoading || this.isAssigning || this.isDeleting) {
+      return;
+    }
+
     if (!this.statusUpdate.status) {
       this.errorMessage = 'Please select a status';
       return;

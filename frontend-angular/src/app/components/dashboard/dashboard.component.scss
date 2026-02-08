@@ -74,6 +74,24 @@
     }
   }
 
+  .btn-users {
+    background: #36b37e;
+    color: white;
+
+    &:hover {
+      background: #2ea66d;
+    }
+  }
+
+  .btn-statistics {
+    background: #6554c0;
+    color: white;
+
+    &:hover {
+      background: #5243aa;
+    }
+  }
+
   .btn-logout {
     background: #de350b;
     color: white;
@@ -157,6 +175,33 @@
       border-radius: 12px;
       font-size: 14px;
       font-weight: 600;
+    }
+
+    .header-right-section {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn-view-all {
+      padding: 6px 16px;
+      background: #0052cc;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:hover {
+        background: #0065ff;
+        transform: translateY(-1px);
+      }
+
+      &:active {
+        transform: translateY(0);
+      }
     }
   }
 }

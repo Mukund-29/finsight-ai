@@ -8,6 +8,10 @@
           <p>Assigning ticket...</p>
         } @else if (isUpdatingStatus) {
           <p>Updating status...</p>
+        } @else if (isUpdatingEta) {
+          <p>Updating ETA...</p>
+        } @else if (isAddingComment) {
+          <p>Adding comment...</p>
         } @else if (isDeleting) {
           <p>Deleting request...</p>
         } @else {
@@ -30,25 +34,36 @@
     </div>
   } @else if (request) {
     <div class="detail-header">
-      <button class="btn-back" (click)="goBack()" [disabled]="isLoading || isAssigning || isUpdatingStatus || isDeleting">← Back</button>
+      <button class="btn-back" (click)="goBack()" [disabled]="isLoading || isAssigning || isUpdatingStatus || isDeleting || isUpdatingEta">← Back</button>
       <div class="header-actions">
         @if (canAssignRequest()) {
           <button class="btn-assign" (click)="showAssignForm()" [disabled]="isLoading || isAssigning || isUpdatingStatus || isDeleting">
-            Assign Ticket
+            <span class="btn-content">
+              @if (isAssigning) {
+                <span class="btn-spinner"></span>
+              }
+              <span>Assign Ticket</span>
+            </span>
           </button>
         }
         @if (canUpdateStatus()) {
           <button class="btn-update-status" (click)="showStatusUpdateForm()" [disabled]="isLoading || isAssigning || isUpdatingStatus || isDeleting">
-            Update Status
+            <span class="btn-content">
+              @if (isUpdatingStatus) {
+                <span class="btn-spinner"></span>
+              }
+              <span>Update Status</span>
+            </span>
           </button>
         }
         @if (canDeleteRequest()) {
           <button class="btn-delete" (click)="deleteRequest()" [disabled]="isLoading || isDeleting">
-            @if (isDeleting) {
-              <span>Deleting...</span>
-            } @else {
+            <span class="btn-content">
+              @if (isDeleting) {
+                <span class="btn-spinner"></span>
+              }
               <span>Delete Request</span>
-            }
+            </span>
           </button>
         }
       </div>
@@ -121,19 +136,28 @@
               <span>{{ request.assignedAt | date:'medium' }}</span>
             </div>
           }
-          @if (request.eta) {
-            <div class="detail-item">
-              <label>ETA</label>
-              <span [ngClass]="{'eta-exceeded': request.etaExceeded, 'eta-approaching': request.etaApproaching}">
-                {{ request.eta | date:'medium' }}
-                @if (request.etaExceeded) {
-                  <span class="eta-warning">⚠️ Exceeded</span>
-                } @else if (request.etaApproaching) {
-                  <span class="eta-warning">⏰ Approaching</span>
+          <div class="detail-item">
+            <label>ETA</label>
+            @if (request.eta) {
+              <div class="eta-display-section">
+                <span [ngClass]="{'eta-exceeded': request.etaExceeded, 'eta-approaching': request.etaApproaching}">
+                  {{ request.eta | date:'medium' }}
+                  @if (request.etaExceeded) {
+                    <span class="eta-warning">⚠️ Exceeded</span>
+                  } @else if (request.etaApproaching) {
+                    <span class="eta-warning">⏰ Approaching</span>
+                  }
+                </span>
+                @if (canUpdateEta()) {
+                  <button type="button" class="btn-edit-eta-small" (click)="showEtaUpdate()" [disabled]="isLoading || isAssigning || isUpdatingStatus || isDeleting || isUpdatingEta">
+                    Edit ETA
+                  </button>
                 }
-              </span>
-            </div>
-          }
+              </div>
+            } @else {
+              <span class="not-assigned">Not set</span>
+            }
+          </div>
         </div>
 
         <div class="timer-section">
@@ -162,13 +186,100 @@
           </div>
         </div>
 
-        <!-- Comments Section (Placeholder for future implementation) -->
+        <!-- Comments Section -->
         <div class="comments-section">
-          <h3>Comments</h3>
-          <div class="comments-placeholder">
-            <p>Comments feature will be implemented in the next phase.</p>
-            <p>For now, you can use the status update comment field.</p>
+          <div class="comments-header">
+            <h3>Comments</h3>
+            @if (canAddComment()) {
+              <button class="btn-add-comment" (click)="showAddComment()" [disabled]="isLoading || isAddingComment">
+                <span class="btn-content">
+                  @if (isAddingComment) {
+                    <span class="btn-spinner"></span>
+                  }
+                  <span>+ Add Comment</span>
+                </span>
+              </button>
+            }
           </div>
+
+          @if (isLoadingComments) {
+            <div class="comments-loading">
+              <div class="spinner-small"></div>
+              <p>Loading comments...</p>
+            </div>
+          } @else if (comments.length === 0) {
+            <div class="comments-empty">
+              <p>No comments yet. Be the first to comment!</p>
+            </div>
+          } @else {
+            <div class="comments-list">
+              @for (comment of comments; track comment.commentId) {
+                <div class="comment-item" [ngClass]="{'eta-change-comment': comment.isEtaChange}">
+                  <div class="comment-header">
+                    <span class="comment-author">{{ comment.commentedBy }}</span>
+                    <span class="comment-date">{{ comment.commentedAt | date:'medium' }}</span>
+                    @if (comment.isEtaChange) {
+                      <span class="eta-change-badge">ETA Change</span>
+                    }
+                  </div>
+                  <div class="comment-body">
+                    <p class="comment-text">{{ comment.commentText }}</p>
+                    @if (comment.isEtaChange && (comment.oldEta || comment.newEta)) {
+                      <div class="eta-change-details">
+                        @if (comment.oldEta && comment.newEta) {
+                          <p class="eta-change-info">
+                            <strong>ETA Changed:</strong> 
+                            <span class="old-eta">{{ comment.oldEta | date:'medium' }}</span> 
+                            → 
+                            <span class="new-eta">{{ comment.newEta | date:'medium' }}</span>
+                          </p>
+                        } @else if (comment.newEta) {
+                          <p class="eta-change-info">
+                            <strong>ETA Set:</strong> 
+                            <span class="new-eta">{{ comment.newEta | date:'medium' }}</span>
+                          </p>
+                        }
+                        @if (comment.changeReason) {
+                          <p class="change-reason"><strong>Reason:</strong> {{ comment.changeReason }}</p>
+                        }
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- Add Comment Form -->
+          @if (showAddCommentForm) {
+            <div class="add-comment-form" #commentForm>
+              <div class="form-group">
+                <label for="newComment">Add Comment</label>
+                <textarea
+                  id="newComment"
+                  name="newComment"
+                  [(ngModel)]="newComment.commentText"
+                  placeholder="Enter your comment here..."
+                  rows="4"
+                  [disabled]="isAddingComment"
+                ></textarea>
+              </div>
+              @if (errorMessage) {
+                <div class="error-message">{{ errorMessage }}</div>
+              }
+              <div class="form-actions">
+                <button class="btn-cancel" (click)="cancelAddComment()" [disabled]="isAddingComment">Cancel</button>
+                <button class="btn-submit" (click)="addComment()" [disabled]="isAddingComment || !newComment.commentText || newComment.commentText.trim() === ''">
+                  <span class="btn-content">
+                    @if (isAddingComment) {
+                      <span class="btn-spinner"></span>
+                    }
+                    <span>Add Comment</span>
+                  </span>
+                </button>
+              </div>
+            </div>
+          }
         </div>
       </div>
     </div>
@@ -248,11 +359,12 @@
           <div class="modal-footer">
             <button class="btn-cancel" (click)="showAssignModal = false" [disabled]="isAssigning">Cancel</button>
             <button class="btn-submit" (click)="assignRequest()" [disabled]="isAssigning || isLoadingUsers">
-              @if (isAssigning) {
-                <span>Assigning...</span>
-              } @else {
+              <span class="btn-content">
+                @if (isAssigning) {
+                  <span class="btn-spinner"></span>
+                }
                 <span>Assign Ticket</span>
-              }
+              </span>
             </button>
           </div>
         </div>
@@ -299,11 +411,87 @@
           <div class="modal-footer">
             <button class="btn-cancel" (click)="showStatusUpdate = false" [disabled]="isUpdatingStatus">Cancel</button>
             <button class="btn-submit" (click)="updateStatus()" [disabled]="isUpdatingStatus">
-              @if (isUpdatingStatus) {
-                <span>Updating...</span>
-              } @else {
+              <span class="btn-content">
+                @if (isUpdatingStatus) {
+                  <span class="btn-spinner"></span>
+                }
                 <span>Update Status</span>
-              }
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    <!-- ETA Update Modal -->
+    @if (showEtaUpdateForm) {
+      <div class="modal-overlay" (click)="cancelEtaUpdate()">
+        <div class="modal-content" (click)="$event.stopPropagation()">
+          <div class="modal-header">
+            <h2>Update ETA</h2>
+            <button class="btn-close" (click)="cancelEtaUpdate()" [disabled]="isUpdatingEta">✕</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="etaDate">New ETA Date <span class="required">*</span></label>
+              <input
+                type="date"
+                id="etaDate"
+                name="etaDate"
+                [(ngModel)]="etaUpdateData.etaDate"
+                [min]="getMinDate()"
+                required
+                [disabled]="isUpdatingEta"
+              />
+            </div>
+            <div class="form-group">
+              <label for="etaTime">New ETA Time <span class="required">*</span></label>
+              <input
+                type="time"
+                id="etaTime"
+                name="etaTime"
+                [(ngModel)]="etaUpdateData.etaTime"
+                required
+                [disabled]="isUpdatingEta"
+              />
+            </div>
+            <div class="form-group">
+              <label for="changeReason">Reason for ETA Change <span class="required">*</span></label>
+              <textarea
+                id="changeReason"
+                name="changeReason"
+                [(ngModel)]="etaUpdateData.changeReason"
+                placeholder="Please provide a reason for changing the ETA (required)"
+                rows="3"
+                required
+                [disabled]="isUpdatingEta"
+              ></textarea>
+              <small class="form-hint">This field is mandatory when updating ETA</small>
+            </div>
+            <div class="form-group">
+              <label for="commentText">Additional Comment (Optional)</label>
+              <textarea
+                id="commentText"
+                name="commentText"
+                [(ngModel)]="etaUpdateData.commentText"
+                placeholder="Add any additional comments (optional)"
+                rows="3"
+                [disabled]="isUpdatingEta"
+              ></textarea>
+            </div>
+            @if (errorMessage) {
+              <div class="error-message">{{ errorMessage }}</div>
+            }
+          </div>
+          <div class="modal-footer">
+            <button class="btn-cancel" (click)="cancelEtaUpdate()" [disabled]="isUpdatingEta">Cancel</button>
+            <button class="btn-submit" (click)="updateEta()" [disabled]="isUpdatingEta || !etaUpdateData.etaDate || !etaUpdateData.etaTime || !etaUpdateData.changeReason || etaUpdateData.changeReason.trim() === ''">
+              <span class="btn-content">
+                @if (isUpdatingEta) {
+                  <span class="btn-spinner"></span>
+                }
+                <span>Update ETA</span>
+              </span>
             </button>
           </div>
         </div>

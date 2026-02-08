@@ -108,7 +108,10 @@
         </button>
         <button type="submit" class="btn-submit" [disabled]="isLoading">
           @if (isLoading) {
-            <span>Creating...</span>
+            <span class="btn-content">
+              <span class="btn-spinner"></span>
+              <span>Creating...</span>
+            </span>
           } @else {
             <span>Create Request</span>
           }

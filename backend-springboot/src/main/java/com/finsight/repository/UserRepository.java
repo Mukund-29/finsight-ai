@@ -29,4 +29,7 @@ public interface UserRepository extends JpaRepository<User, String> {
     
     // Find active users by role
     List<User> findByRoleAndActiveTrueOrderByNtidAsc(UserRole role);
+    
+    // Find all users (both active and inactive)
+    List<User> findAllByOrderByNtidAsc();
 }

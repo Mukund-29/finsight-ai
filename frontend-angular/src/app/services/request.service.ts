@@ -52,6 +52,24 @@ export interface UpdateStatus {
   comment?: string;
 }
 
+export interface Comment {
+  commentId: number;
+  requestId: number;
+  commentText: string;
+  commentedBy: string;
+  commentedAt: string;
+  isEtaChange: boolean;
+  oldEta?: string;
+  newEta?: string;
+  changeReason?: string;
+}
+
+export interface CreateComment {
+  commentText: string;
+  isEtaChange?: boolean;
+  changeReason?: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -140,12 +158,61 @@ export class RequestService {
     });
   }
 
-  getAssignableUsers(userNtid: string, role?: string): Observable<User[]> {
+  getAssignableUsers(userNtid: string, role?: string, accountId?: number, createdByNtid?: string): Observable<User[]> {
     let url = `${environment.apiUrl}/users`;
+    const params: string[] = [];
+    
     if (role) {
-      url += `?role=${role}`;
+      params.push(`role=${role}`);
     }
+    if (accountId) {
+      params.push(`accountId=${accountId}`);
+    }
+    if (createdByNtid) {
+      params.push(`createdByNtid=${createdByNtid}`);
+    }
+    
+    if (params.length > 0) {
+      url += '?' + params.join('&');
+    }
+    
     return this.http.get<User[]>(url, {
+      headers: this.getHeaders(userNtid)
+    });
+  }
+
+  getUserTicketStatistics(userNtid: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/user-statistics`, {
+      headers: this.getHeaders(userNtid)
+    });
+  }
+
+  updateEta(requestId: number, updateEtaDTO: { newEta: string; changeReason: string; commentText?: string }, userNtid: string): Observable<any> {
+    return this.http.put(`${this.apiUrl}/${requestId}/eta`, updateEtaDTO, {
+      headers: this.getHeaders(userNtid)
+    });
+  }
+
+  getComments(requestId: number, userNtid: string): Observable<Comment[]> {
+    return this.http.get<Comment[]>(`${this.apiUrl}/${requestId}/comments`, {
+      headers: this.getHeaders(userNtid)
+    });
+  }
+
+  addComment(requestId: number, comment: CreateComment, userNtid: string): Observable<Comment> {
+    return this.http.post<Comment>(`${this.apiUrl}/${requestId}/comments`, comment, {
+      headers: this.getHeaders(userNtid)
+    });
+  }
+
+  getAccountStatistics(userNtid: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/account-statistics`, {
+      headers: this.getHeaders(userNtid)
+    });
+  }
+
+  getUserStatisticsByAccount(accountId: number, userNtid: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/user-statistics-by-account/${accountId}`, {
       headers: this.getHeaders(userNtid)
     });
   }

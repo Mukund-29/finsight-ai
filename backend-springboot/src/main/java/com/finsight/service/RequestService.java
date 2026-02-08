@@ -37,6 +37,12 @@ public class RequestService {
     @Autowired
     private com.finsight.repository.UserAccountRepository userAccountRepository;
 
+    @Autowired
+    private com.finsight.repository.AccountRepository accountRepository;
+
+    @Autowired
+    private RequestCommentService commentService;
+
     /**
      * Create new request
      */
@@ -96,8 +102,12 @@ public class RequestService {
                 requests = requestRepository.findByActiveTrueOrderByCreatedAtDesc();
             }
         } else if (role == UserRole.SCRUM_MASTER) {
-            // SCRUM_MASTER can see requests for accounts they handle
-            // Check both FLOWAI_USER_ACCOUNTS junction table and user's accountId from FLOWAI_USERS
+            // SCRUM_MASTER can see:
+            // 1. All OPEN tickets (for assignment purposes)
+            // 2. All ASSIGNED tickets (to see what's been assigned)
+            // 3. Tickets assigned to them personally (regardless of account)
+            // 4. Tickets from accounts they handle (when status is null or other statuses)
+            
             List<Long> junctionAccountIds = userAccountRepository.findAccountIdsByNtid(userNtid);
             List<Long> handledAccountIds;
             
@@ -109,75 +119,60 @@ public class RequestService {
                 handledAccountIds = junctionAccountIds;
             }
             
-            if (handledAccountIds.isEmpty()) {
-                System.out.println("  [RequestService] SCRUM_MASTER has no assigned accounts");
-                System.out.println("  [RequestService] ACTION REQUIRED: Assign accounts to SCRUM_MASTER using POST /api/user-accounts or set accountId in user table");
-                requests = List.of();
+            System.out.println("  [RequestService] SCRUM_MASTER handles " + handledAccountIds.size() + " accounts: " + handledAccountIds);
+            
+            if (status == RequestStatus.OPEN) {
+                // SCRUM_MASTER can see ALL OPEN tickets (for assignment purposes)
+                requests = requestRepository.findByStatusAndActiveTrueOrderByCreatedAtDesc(RequestStatus.OPEN);
+                System.out.println("  [RequestService] SCRUM_MASTER sees " + requests.size() + " OPEN requests (all open tickets)");
+            } else if (status == RequestStatus.ASSIGNED) {
+                // SCRUM_MASTER can see ALL assigned tickets (to see what's been assigned)
+                requests = requestRepository.findAllAssignedTicketsOrderByCreatedAtDesc();
+                System.out.println("  [RequestService] SCRUM_MASTER sees " + requests.size() + " ASSIGNED requests (all assigned tickets)");
+            } else if (status == null) {
+                // No status filter - get tickets from handled accounts AND tickets assigned to SCRUM_MASTER
+                List<Request> allRequests = requestRepository.findByActiveTrueOrderByCreatedAtDesc();
+                System.out.println("  [RequestService] Total active requests in system: " + allRequests.size());
+                
+                requests = allRequests.stream()
+                    .filter(r -> {
+                        // Include if: assigned to SCRUM_MASTER OR from handled accounts
+                        boolean assignedToMe = r.getAssignedTo() != null && r.getAssignedTo().equalsIgnoreCase(userNtid);
+                        boolean fromHandledAccount = r.getAccountId() != null && handledAccountIds.contains(r.getAccountId());
+                        return assignedToMe || fromHandledAccount;
+                    })
+                    .collect(Collectors.toList());
+                System.out.println("  [RequestService] Filtered to " + requests.size() + " requests (assigned to SCRUM_MASTER or from handled accounts)");
             } else {
-                System.out.println("  [RequestService] SCRUM_MASTER handles " + handledAccountIds.size() + " accounts: " + handledAccountIds);
-                
-                // Get requests for handled accounts
-                if (status == null) {
-                    // No status filter - get ALL requests from handled accounts (for "Recent Tickets")
-                    List<Request> allRequests = requestRepository.findByActiveTrueOrderByCreatedAtDesc();
-                    System.out.println("  [RequestService] Total active requests in system: " + allRequests.size());
-                    requests = allRequests.stream()
-                        .filter(r -> {
-                            boolean matches = r.getAccountId() != null && handledAccountIds.contains(r.getAccountId());
-                            if (!matches && r.getAccountId() != null) {
-                                System.out.println("  [RequestService] Request #" + r.getRequestId() + " has accountId " + r.getAccountId() + " (not in handled accounts)");
-                            }
-                            return matches;
-                        })
-                        .collect(Collectors.toList());
-                    System.out.println("  [RequestService] Filtered to " + requests.size() + " requests from handled accounts");
-                } else if (status == RequestStatus.ASSIGNED) {
-                    // When requesting ASSIGNED, return all tickets that have been assigned (regardless of current status)
-                    // Filter by handled accounts
-                    List<Request> allAssignedRequests = requestRepository.findAllAssignedTicketsOrderByCreatedAtDesc();
-                    requests = allAssignedRequests.stream()
-                        .filter(r -> r.getAccountId() != null && handledAccountIds.contains(r.getAccountId()))
-                        .collect(Collectors.toList());
-                    System.out.println("  [RequestService] Filtered to " + requests.size() + " assigned requests from handled accounts");
-                } else if (status == RequestStatus.OPEN) {
-                    // Specifically requesting OPEN requests (for assignment queue)
-                    List<Request> allOpenRequests = requestRepository.findByStatusAndActiveTrueOrderByCreatedAtDesc(RequestStatus.OPEN);
-                    System.out.println("  [RequestService] Total OPEN requests in system: " + allOpenRequests.size());
-                    requests = allOpenRequests.stream()
-                        .filter(r -> {
-                            boolean matches = r.getAccountId() != null && handledAccountIds.contains(r.getAccountId());
-                            if (!matches && r.getAccountId() != null) {
-                                System.out.println("  [RequestService] OPEN Request #" + r.getRequestId() + " has accountId " + r.getAccountId() + " (not in handled accounts)");
-                            }
-                            return matches;
-                        })
-                        .collect(Collectors.toList());
-                    System.out.println("  [RequestService] Filtered to " + requests.size() + " OPEN requests from handled accounts");
-                } else {
-                    // For other specific statuses, get all requests and filter by status
-                    requests = requestRepository.findByActiveTrueOrderByCreatedAtDesc()
-                        .stream()
-                        .filter(r -> r.getAccountId() != null && handledAccountIds.contains(r.getAccountId()))
-                        .filter(r -> r.getStatus() == status)
-                        .collect(Collectors.toList());
-                }
-                
-                // Apply additional filters
-                if (priority != null) {
-                    requests = requests.stream()
-                        .filter(r -> r.getPriority() == priority)
-                        .collect(Collectors.toList());
-                }
-                if (requestType != null) {
-                    requests = requests.stream()
-                        .filter(r -> r.getRequestType() == requestType)
-                        .collect(Collectors.toList());
-                }
-                if (accountId != null) {
-                    requests = requests.stream()
-                        .filter(r -> r.getAccountId() != null && r.getAccountId().equals(accountId))
-                        .collect(Collectors.toList());
-                }
+                // For other specific statuses, get tickets from handled accounts AND tickets assigned to SCRUM_MASTER
+                List<Request> allRequests = requestRepository.findByActiveTrueOrderByCreatedAtDesc();
+                requests = allRequests.stream()
+                    .filter(r -> r.getStatus() == status)
+                    .filter(r -> {
+                        // Include if: assigned to SCRUM_MASTER OR from handled accounts
+                        boolean assignedToMe = r.getAssignedTo() != null && r.getAssignedTo().equalsIgnoreCase(userNtid);
+                        boolean fromHandledAccount = r.getAccountId() != null && handledAccountIds.contains(r.getAccountId());
+                        return assignedToMe || fromHandledAccount;
+                    })
+                    .collect(Collectors.toList());
+                System.out.println("  [RequestService] Filtered to " + requests.size() + " " + status + " requests (assigned to SCRUM_MASTER or from handled accounts)");
+            }
+            
+            // Apply additional filters
+            if (priority != null) {
+                requests = requests.stream()
+                    .filter(r -> r.getPriority() == priority)
+                    .collect(Collectors.toList());
+            }
+            if (requestType != null) {
+                requests = requests.stream()
+                    .filter(r -> r.getRequestType() == requestType)
+                    .collect(Collectors.toList());
+            }
+            if (accountId != null) {
+                requests = requests.stream()
+                    .filter(r -> r.getAccountId() != null && r.getAccountId().equals(accountId))
+                    .collect(Collectors.toList());
             }
         } else if (role == UserRole.MANAGER) {
             // MANAGER can see requests for their account
@@ -266,52 +261,16 @@ public class RequestService {
                     .collect(Collectors.toList());
             }
         } else {
-            // USER role: can see own created requests and assigned requests
-            if (status == RequestStatus.OPEN) {
-                // When requesting OPEN tickets, show all OPEN tickets
-                requests = requestRepository.findByStatusAndActiveTrueOrderByCreatedAtDesc(RequestStatus.OPEN);
-            } else if (status == RequestStatus.ASSIGNED) {
-                // When requesting ASSIGNED, show all tickets assigned to this user (regardless of current status)
-                requests = requestRepository.findByAssignedToAndActiveTrueOrderByCreatedAtDesc(userNtid);
-            } else if (status != null) {
-                // For other specific statuses, show own created requests with that status
-                requests = requestRepository.findByCreatedByAndActiveTrueOrderByCreatedAtDesc(userNtid)
-                    .stream()
-                    .filter(r -> r.getStatus() == status)
-                    .collect(Collectors.toList());
+            // USER role and all other roles: can see ALL tickets (view restriction removed)
+            // All users can view all tickets, but other restrictions (update, assign, etc.) remain
+            if (status == RequestStatus.ASSIGNED) {
+                // When requesting ASSIGNED, return all tickets that have been assigned (regardless of current status)
+                requests = requestRepository.findAllAssignedTicketsOrderByCreatedAtDesc();
+            } else if (status != null || priority != null || requestType != null || accountId != null) {
+                requests = requestRepository.findWithFilters(status, priority, requestType, accountId);
             } else {
-                // No status filter: show own created requests + assigned requests
-                List<Request> createdRequests = requestRepository.findByCreatedByAndActiveTrueOrderByCreatedAtDesc(userNtid);
-                List<Request> assignedRequests = requestRepository.findByAssignedToAndActiveTrueOrderByCreatedAtDesc(userNtid);
-                
-                // Combine and remove duplicates
-                requests = new java.util.ArrayList<>(createdRequests);
-                for (Request assignedReq : assignedRequests) {
-                    if (requests.stream().noneMatch(r -> r.getRequestId().equals(assignedReq.getRequestId()))) {
-                        requests.add(assignedReq);
-                    }
-                }
-                // Sort by created date descending
-                requests = requests.stream()
-                    .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
-                    .collect(Collectors.toList());
-            }
-            
-            // Apply additional filters
-            if (priority != null) {
-                requests = requests.stream()
-                    .filter(r -> r.getPriority() == priority)
-                    .collect(Collectors.toList());
-            }
-            if (requestType != null) {
-                requests = requests.stream()
-                    .filter(r -> r.getRequestType() == requestType)
-                    .collect(Collectors.toList());
-            }
-            if (accountId != null) {
-                requests = requests.stream()
-                    .filter(r -> r.getAccountId() != null && r.getAccountId().equals(accountId))
-                    .collect(Collectors.toList());
+                // No filters: show all active tickets
+                requests = requestRepository.findByActiveTrueOrderByCreatedAtDesc();
             }
         }
 
@@ -442,6 +401,70 @@ public class RequestService {
         request.setEta(assignDTO.getEta());
 
         return requestRepository.save(request);
+    }
+
+    /**
+     * Update ETA with comment
+     */
+    @Transactional
+    public Request updateEta(Long requestId, com.finsight.dto.UpdateEtaDTO updateEtaDTO, String userNtid) {
+        System.out.println("  [RequestService] updateEta() called");
+        System.out.println("  [RequestService] Request ID: " + requestId);
+        System.out.println("  [RequestService] Updated by: " + userNtid);
+
+        Request request = requestRepository.findById(requestId)
+            .orElseThrow(() -> new RuntimeException("Request not found: " + requestId));
+
+        User user = userRepository.findByNtid(userNtid)
+            .orElseThrow(() -> new RuntimeException("User not found: " + userNtid));
+
+        // Check permissions: ADMIN, SCRUM_MASTER, or assigned user can update ETA
+        boolean canUpdateEta = false;
+        if (user.getRole() == UserRole.ADMIN || user.getRole() == UserRole.SCRUM_MASTER) {
+            canUpdateEta = true;
+        } else if (request.getAssignedTo() != null && request.getAssignedTo().equalsIgnoreCase(userNtid)) {
+            canUpdateEta = true;
+        }
+
+        if (!canUpdateEta) {
+            throw new RuntimeException("Only ADMIN, SCRUM_MASTER, or assigned user can update ETA");
+        }
+
+        // Validate that change reason is provided (mandatory)
+        if (updateEtaDTO.getChangeReason() == null || updateEtaDTO.getChangeReason().trim().isEmpty()) {
+            throw new RuntimeException("Reason for ETA change is required");
+        }
+
+        // Validate new ETA is provided
+        if (updateEtaDTO.getNewEta() == null) {
+            throw new RuntimeException("New ETA is required");
+        }
+
+        // Store old ETA
+        LocalDateTime oldEta = request.getEta();
+        LocalDateTime newEta = updateEtaDTO.getNewEta();
+
+        // Update ETA
+        request.setEta(newEta);
+
+        // Save request first
+        Request savedRequest = requestRepository.save(request);
+
+        // Add comment for ETA change
+        try {
+            commentService.addEtaChangeComment(
+                requestId,
+                oldEta,
+                newEta,
+                updateEtaDTO.getChangeReason(),
+                userNtid
+            );
+        } catch (Exception e) {
+            System.out.println("  [RequestService] Warning: Failed to add ETA change comment: " + e.getMessage());
+            // Don't fail the ETA update if comment creation fails
+        }
+
+        return savedRequest;
     }
 
     /**
@@ -598,5 +621,280 @@ public class RequestService {
         }
 
         return stats;
+    }
+
+    /**
+     * Get account statistics (tickets per account)
+     * Available to all users
+     */
+    public List<com.finsight.dto.AccountStatsDTO> getAccountStatistics() {
+        System.out.println("\n=========================================");
+        System.out.println("API CALLED: getAccountStatistics");
+        
+        List<com.finsight.entity.Account> allAccounts = accountRepository.findByActiveTrueOrderByAccountNameAsc();
+        List<com.finsight.dto.AccountStatsDTO> accountStatsList = new java.util.ArrayList<>();
+
+        for (com.finsight.entity.Account account : allAccounts) {
+            List<Request> accountRequests = requestRepository.findByAccountIdAndActiveTrueOrderByCreatedAtDesc(account.getAccountId());
+            
+            long totalTickets = accountRequests.size();
+            
+            long openTickets = accountRequests.stream()
+                .filter(r -> r.getStatus() == RequestStatus.OPEN)
+                .count();
+
+            long resolvedTickets = accountRequests.stream()
+                .filter(r -> r.getStatus() == RequestStatus.COMPLETED)
+                .count();
+
+            long pendingTickets = accountRequests.stream()
+                .filter(r -> r.getStatus() == RequestStatus.ASSIGNED || r.getStatus() == RequestStatus.IN_PROGRESS)
+                .count();
+
+            long onHoldTickets = accountRequests.stream()
+                .filter(r -> r.getStatus() == RequestStatus.ON_HOLD)
+                .count();
+
+            // ETA calculations
+            long crossedEta = 0;
+            LocalDateTime now = LocalDateTime.now();
+
+            for (Request ticket : accountRequests) {
+                if (ticket.getEta() != null) {
+                    if (ticket.getStatus() == RequestStatus.COMPLETED) {
+                        if (ticket.getUpdatedAt() != null && !ticket.getUpdatedAt().isBefore(ticket.getEta())) {
+                            crossedEta++;
+                        }
+                    } else if (ticket.getEta().isBefore(now)) {
+                        // ETA has passed but ticket is not completed
+                        crossedEta++;
+                    }
+                }
+            }
+
+            com.finsight.dto.AccountStatsDTO accountStats = new com.finsight.dto.AccountStatsDTO(
+                account.getAccountId(),
+                account.getAccountName(),
+                openTickets
+            );
+
+            accountStats.setTotalTickets(totalTickets);
+            accountStats.setResolvedTickets(resolvedTickets);
+            accountStats.setPendingTickets(pendingTickets);
+            accountStats.setOnHoldTickets(onHoldTickets);
+            accountStats.setCrossedEtaTickets(crossedEta);
+
+            // Debug logging
+            System.out.println("  Account: " + account.getAccountName() + " (ID: " + account.getAccountId() + ")");
+            System.out.println("    Total: " + accountStats.getTotalTickets());
+            System.out.println("    Resolved: " + accountStats.getResolvedTickets());
+            System.out.println("    Pending (In Progress): " + accountStats.getPendingTickets());
+            System.out.println("    On Hold: " + accountStats.getOnHoldTickets());
+            System.out.println("    Open: " + accountStats.getOpenTickets());
+            System.out.println("    Crossed ETA: " + accountStats.getCrossedEtaTickets());
+
+            accountStatsList.add(accountStats);
+        }
+
+        System.out.println("Returning statistics for " + accountStatsList.size() + " accounts");
+        System.out.println("=========================================\n");
+        return accountStatsList;
+    }
+
+    /**
+     * Get user ticket statistics filtered by account
+     * Available to all users
+     */
+    public List<com.finsight.dto.UserTicketStatsDTO> getUserStatisticsByAccount(Long accountId) {
+        System.out.println("\n=========================================");
+        System.out.println("API CALLED: getUserStatisticsByAccount");
+        System.out.println("Account ID: " + accountId);
+        
+        if (accountId == null) {
+            System.out.println("ERROR: Account ID is null");
+            throw new RuntimeException("Account ID cannot be null");
+        }
+        
+        // Get all users who have this account (either directly or through junction table)
+        List<User> allUsers = userRepository.findAllByOrderByNtidAsc();
+        List<com.finsight.dto.UserTicketStatsDTO> statsList = new java.util.ArrayList<>();
+        
+        System.out.println("Total users in system: " + allUsers.size());
+
+        for (User user : allUsers) {
+            // Check if user belongs to this account
+            boolean belongsToAccount = false;
+            if (user.getAccountId() != null && user.getAccountId().equals(accountId)) {
+                belongsToAccount = true;
+            } else {
+                // Check junction table
+                List<Long> userAccountIds = userAccountRepository.findAccountIdsByNtid(user.getNtid());
+                if (userAccountIds.contains(accountId)) {
+                    belongsToAccount = true;
+                }
+            }
+
+            if (!belongsToAccount) {
+                continue; // Skip users not in this account
+            }
+
+            // Get tickets assigned to this user for this account
+            // Use case-insensitive comparison by trimming and normalizing
+            String userNtidNormalized = user.getNtid() != null ? user.getNtid().trim() : "";
+            List<Request> assignedTickets = requestRepository.findByAssignedToAndActiveTrueOrderByCreatedAtDesc(userNtidNormalized)
+                .stream()
+                .filter(r -> r.getAccountId() != null && r.getAccountId().equals(accountId))
+                .collect(Collectors.toList());
+            
+            // Debug logging
+            System.out.println("  User: " + user.getNtid() + " in Account: " + accountId + " - Found " + assignedTickets.size() + " assigned tickets");
+            
+            com.finsight.dto.UserTicketStatsDTO stats = new com.finsight.dto.UserTicketStatsDTO(
+                user.getNtid(),
+                user.getEmail(),
+                user.getRole().toString()
+            );
+            
+            stats.setTotalTickets((long) assignedTickets.size());
+
+            // Count by status
+            long resolved = assignedTickets.stream()
+                .filter(r -> r.getStatus() == RequestStatus.COMPLETED)
+                .count();
+            stats.setResolvedTickets(resolved);
+
+            long pending = assignedTickets.stream()
+                .filter(r -> r.getStatus() == RequestStatus.ASSIGNED || r.getStatus() == RequestStatus.IN_PROGRESS)
+                .count();
+            stats.setPendingTickets(pending);
+            System.out.println("  User: " + user.getNtid() + " in Account: " + accountId + " - Pending (In Progress): " + pending);
+
+            long onHold = assignedTickets.stream()
+                .filter(r -> r.getStatus() == RequestStatus.ON_HOLD)
+                .count();
+            stats.setOnHoldTickets(onHold);
+
+            // Unresolved is no longer displayed, but keep for backward compatibility
+            long unresolved = assignedTickets.stream()
+                .filter(r -> r.getStatus() != RequestStatus.COMPLETED && r.getStatus() != RequestStatus.CANCELLED)
+                .count();
+            stats.setUnresolvedTickets(unresolved);
+
+            // ETA calculations
+            long crossedEta = 0;
+            LocalDateTime now = LocalDateTime.now();
+
+            for (Request ticket : assignedTickets) {
+                if (ticket.getEta() != null) {
+                    if (ticket.getStatus() == RequestStatus.COMPLETED) {
+                        if (ticket.getUpdatedAt() != null && !ticket.getUpdatedAt().isBefore(ticket.getEta())) {
+                            crossedEta++;
+                        }
+                    } else if (ticket.getEta().isBefore(now)) {
+                        crossedEta++;
+                    }
+                }
+            }
+
+            stats.setCrossedEtaTickets(crossedEta);
+
+            statsList.add(stats);
+        }
+
+        System.out.println("Returning statistics for " + statsList.size() + " users in account " + accountId);
+        if (statsList.isEmpty()) {
+            System.out.println("WARNING: No users found for account " + accountId);
+        }
+        System.out.println("=========================================\n");
+        return statsList;
+    }
+
+    /**
+     * Get ticket statistics for all users
+     * Available to all users
+     */
+    public List<com.finsight.dto.UserTicketStatsDTO> getUserTicketStatistics(String requestedBy) {
+        System.out.println("\n=========================================");
+        System.out.println("API CALLED: getUserTicketStatistics");
+        System.out.println("Requested by: " + requestedBy);
+        
+        // Verify user exists (but no role restriction - all users can view)
+        userRepository.findByNtid(requestedBy)
+            .orElseThrow(() -> new RuntimeException("Requester not found"));
+
+        // Get all users (both active and inactive) - to show statistics for all users including their tickets
+        // Note: Tickets assigned to inactive users remain visible in statistics and ticket views
+        // When a user is reactivated, they can immediately see their tickets again
+        List<User> allUsers = userRepository.findAllByOrderByNtidAsc();
+        List<com.finsight.dto.UserTicketStatsDTO> statsList = new java.util.ArrayList<>();
+
+        for (User user : allUsers) {
+            com.finsight.dto.UserTicketStatsDTO stats = new com.finsight.dto.UserTicketStatsDTO(
+                user.getNtid(),
+                user.getEmail(),
+                user.getRole().toString()
+            );
+
+            // Get all tickets assigned to this user (regardless of user's active status)
+            // This ensures tickets remain visible even when user is deactivated
+            // Use case-insensitive comparison by trimming and normalizing
+            String userNtidNormalized = user.getNtid() != null ? user.getNtid().trim() : "";
+            List<Request> assignedTickets = requestRepository.findByAssignedToAndActiveTrueOrderByCreatedAtDesc(userNtidNormalized);
+            
+            // Debug logging
+            System.out.println("  User: " + user.getNtid() + " - Found " + assignedTickets.size() + " assigned tickets");
+            for (Request ticket : assignedTickets) {
+                System.out.println("    Ticket ID: " + ticket.getRequestId() + ", Status: " + ticket.getStatus() + ", AssignedTo: '" + ticket.getAssignedTo() + "'");
+            }
+            
+            stats.setTotalTickets((long) assignedTickets.size());
+
+            // Count by status
+            long resolved = assignedTickets.stream()
+                .filter(r -> r.getStatus() == RequestStatus.COMPLETED)
+                .count();
+            stats.setResolvedTickets(resolved);
+
+            long pending = assignedTickets.stream()
+                .filter(r -> r.getStatus() == RequestStatus.ASSIGNED || r.getStatus() == RequestStatus.IN_PROGRESS)
+                .count();
+            stats.setPendingTickets(pending);
+
+            long onHold = assignedTickets.stream()
+                .filter(r -> r.getStatus() == RequestStatus.ON_HOLD)
+                .count();
+            stats.setOnHoldTickets(onHold);
+
+            long unresolved = assignedTickets.stream()
+                .filter(r -> r.getStatus() != RequestStatus.COMPLETED && r.getStatus() != RequestStatus.CANCELLED)
+                .count();
+            stats.setUnresolvedTickets(unresolved);
+
+            // ETA calculations
+            long crossedEta = 0;
+            LocalDateTime now = LocalDateTime.now();
+
+            for (Request ticket : assignedTickets) {
+                if (ticket.getEta() != null) {
+                    if (ticket.getStatus() == RequestStatus.COMPLETED) {
+                        // Check if completed after ETA
+                        if (ticket.getUpdatedAt() != null && !ticket.getUpdatedAt().isBefore(ticket.getEta())) {
+                            crossedEta++;
+                        }
+                    } else if (ticket.getEta().isBefore(now)) {
+                        // ETA has passed but ticket is not completed
+                        crossedEta++;
+                    }
+                }
+            }
+
+            stats.setCrossedEtaTickets(crossedEta);
+
+            statsList.add(stats);
+        }
+
+        System.out.println("Returning statistics for " + statsList.size() + " users");
+        System.out.println("=========================================\n");
+        return statsList;
     }
 }

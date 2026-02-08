@@ -1,0 +1,570 @@
+.user-statistics-container {
+  min-height: 100vh;
+  background: #f4f5f7;
+  padding: 0;
+}
+
+.header {
+  background: white;
+  padding: 20px 30px;
+  border-bottom: 1px solid #e1e4e8;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+
+  h1 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: #172b4d;
+    flex: 1;
+    text-align: center;
+  }
+
+  .btn-back {
+    padding: 8px 16px;
+    background: #f4f5f7;
+    color: #42526e;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      background: #e1e4e8;
+    }
+  }
+
+  .btn-refresh {
+    padding: 8px 16px;
+    background: #f4f5f7;
+    color: #42526e;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    .icon {
+      font-size: 16px;
+    }
+
+    &:hover:not(:disabled) {
+      background: #e1e4e8;
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+}
+
+.error-banner {
+  background: #ffebe6;
+  color: #bf2600;
+  padding: 12px 30px;
+  border-left: 4px solid #bf2600;
+  margin: 0;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #f4f5f7;
+    border-top-color: #0052cc;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 16px;
+  }
+
+  p {
+    color: #6b778c;
+    font-size: 14px;
+  }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.statistics-container {
+  padding: 30px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #6b778c;
+  background: white;
+  border-radius: 8px;
+  margin: 20px 30px;
+}
+
+.table-wrapper {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  overflow-x: auto;
+}
+
+.account-header {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: #f4f5f7;
+  border-radius: 8px;
+
+  h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #172b4d;
+  }
+}
+
+.filter-header {
+  background: white;
+  padding: 16px 30px;
+  border-bottom: 1px solid #e1e4e8;
+  margin-bottom: 0;
+
+  h2 {
+    margin: 0 0 4px 0;
+    font-size: 20px;
+    font-weight: 600;
+    color: #172b4d;
+  }
+
+  .user-email {
+    margin: 0;
+    font-size: 14px;
+    color: #6b778c;
+  }
+}
+
+.account-row {
+  cursor: pointer;
+  transition: background 0.2s;
+
+  &:hover {
+    background: #e8e8e8 !important;
+  }
+}
+
+.account-cell {
+  font-weight: 600;
+  color: #172b4d;
+}
+
+.btn-view-users {
+  background: #0052cc;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: #0065ff;
+  }
+}
+
+.statistics-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 1200px;
+  table-layout: auto;
+
+  thead {
+    background: #000000;
+    
+    th {
+      padding: 14px 16px;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 600;
+      color: #ffffff;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 2px solid #333333;
+      white-space: nowrap;
+      
+      // Center align numeric columns
+      &:nth-child(2), // Total
+      &:nth-child(3), // Resolved
+      &:nth-child(4), // In Progress
+      &:nth-child(5), // On Hold
+      &:nth-child(6), // Open Tickets
+      &:nth-child(7) { // Crossed ETA
+        text-align: center;
+      }
+    }
+  }
+
+  tbody {
+    background: #f5f5f5;
+
+    tr {
+      border-bottom: 1px solid #e0e0e0;
+      transition: background 0.2s;
+      background: #f5f5f5;
+
+      &:hover {
+        background: #e8e8e8;
+      }
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+
+    td {
+      padding: 14px 16px;
+      font-size: 14px;
+      color: #000000;
+      font-weight: 400;
+    }
+
+    .user-cell {
+      font-weight: 600;
+      text-align: left;
+    }
+    
+    // Center align email column
+    td:nth-child(2) {
+      text-align: left;
+    }
+
+    .stat-cell {
+      text-align: center;
+      
+      .stat-value {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-weight: 600;
+        min-width: 40px;
+        text-align: center;
+        
+        &.clickable {
+          cursor: pointer;
+          transition: all 0.2s;
+          
+          &:hover {
+            transform: scale(1.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          }
+        }
+      }
+
+      &.total .stat-value {
+        background: #0052cc;
+        color: white;
+      }
+
+      &.resolved .stat-value {
+        background: #36b37e;
+        color: white;
+      }
+
+      &.pending .stat-value {
+        background: #ffab00;
+        color: white;
+      }
+
+      &.onhold .stat-value {
+        background: #6b778c;
+        color: white;
+      }
+
+      &.unresolved .stat-value {
+        background: #ff5630;
+        color: white;
+      }
+
+      &.crossed-eta .stat-value {
+        background: #de350b;
+        color: white;
+      }
+
+
+      &.open .stat-value {
+        background: #ff991f;
+        color: white;
+      }
+    }
+  }
+}
+
+.role-badge {
+  display: inline-block;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+
+  &.role-admin {
+    background: #ff5630;
+    color: white;
+  }
+
+  &.role-scrum_master {
+    background: #0052cc;
+    color: white;
+  }
+
+  &.role-manager {
+    background: #36b37e;
+    color: white;
+  }
+
+  &.role-developer {
+    background: #ffab00;
+    color: white;
+  }
+
+  &  .role-user {
+    background: #6b778c;
+    color: white;
+  }
+}
+
+// Tickets Grid Styles
+.tickets-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+  padding: 30px;
+}
+
+.request-card {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid #e1e4e8;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transform: translateY(-2px);
+  }
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+
+    .request-id {
+      font-weight: 600;
+      color: #6b778c;
+      font-size: 14px;
+    }
+  }
+
+  .request-title {
+    margin: 0 0 12px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #172b4d;
+    line-height: 1.4;
+  }
+
+  .request-meta {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+
+  .assigned-info {
+    font-size: 12px;
+    color: #6b778c;
+    margin-bottom: 8px;
+  }
+
+  .assigned-by-info {
+    font-size: 12px;
+    color: #0052cc;
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+
+  .eta-alert {
+    background: #fff4e5;
+    color: #974f00;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    margin-bottom: 12px;
+    border-left: 3px solid #ff991f;
+
+    &.eta-exceeded {
+      background: #ffebe6;
+      color: #bf2600;
+      border-left-color: #bf2600;
+    }
+  }
+
+  .request-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid #e1e4e8;
+
+    .time-info {
+      font-size: 12px;
+      color: #6b778c;
+    }
+  }
+}
+
+// Priority and Status badges
+.priority-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+
+  &.priority-urgent {
+    background: #ff5630;
+    color: white;
+  }
+
+  &.priority-high {
+    background: #ff991f;
+    color: white;
+  }
+
+  &.priority-medium {
+    background: #ffab00;
+    color: white;
+  }
+
+  &.priority-low {
+    background: #36b37e;
+    color: white;
+  }
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+
+  &.status-open {
+    background: #e3fcef;
+    color: #006644;
+  }
+
+  &.status-assigned {
+    background: #deebff;
+    color: #0052cc;
+  }
+
+  &.status-in-progress {
+    background: #fff4e5;
+    color: #974f00;
+  }
+
+  &.status-on-hold {
+    background: #f4f5f7;
+    color: #42526e;
+  }
+
+  &.status-completed {
+    background: #e3fcef;
+    color: #006644;
+  }
+
+  &.status-delayed {
+    background: #ffebe6;
+    color: #bf2600;
+  }
+
+  &.status-cancelled {
+    background: #f4f5f7;
+    color: #6b778c;
+  }
+}
+
+.request-type {
+  font-size: 12px;
+  color: #6b778c;
+  background: #f4f5f7;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+// Mobile responsive
+@media (max-width: 768px) {
+  .header {
+    padding: 15px;
+    flex-wrap: wrap;
+    gap: 10px;
+
+    h1 {
+      font-size: 20px;
+      order: 2;
+      width: 100%;
+      text-align: left;
+    }
+
+    .btn-back {
+      order: 1;
+    }
+
+    .btn-refresh {
+      order: 3;
+    }
+  }
+
+  .statistics-container {
+    padding: 15px;
+  }
+
+  .tickets-grid {
+    grid-template-columns: 1fr;
+    padding: 15px;
+  }
+
+  .filter-header {
+    padding: 12px 15px;
+
+    h2 {
+      font-size: 18px;
+    }
+  }
+
+  .table-wrapper {
+    overflow-x: auto;
+  }
+}

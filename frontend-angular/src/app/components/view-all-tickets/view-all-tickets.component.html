@@ -1,0 +1,85 @@
+<div class="view-all-container">
+  <!-- Header -->
+  <div class="header">
+    <button class="btn-back" (click)="goBack()">← Back to Dashboard</button>
+    <h1>{{ sectionTitle }}</h1>
+    <div class="header-badge">
+      <span class="badge">{{ tickets.length }} tickets</span>
+    </div>
+  </div>
+
+  <!-- Error Message -->
+  @if (errorMessage) {
+    <div class="error-banner">
+      {{ errorMessage }}
+    </div>
+  }
+
+  <!-- Loading State -->
+  @if (isLoading) {
+    <div class="loading-container">
+      <div class="spinner"></div>
+      <p>Loading tickets...</p>
+    </div>
+  }
+
+  <!-- Tickets Grid -->
+  @if (!isLoading) {
+    <div class="tickets-container">
+      @if (tickets.length === 0) {
+        <div class="empty-state">
+          <p>No tickets found</p>
+        </div>
+      } @else {
+        <div class="requests-grid">
+          @for (request of tickets; track request.requestId) {
+            <div class="request-card" (click)="viewRequest(request.requestId)">
+              <div class="card-header">
+                <span class="request-id">#{{ request.requestId }}</span>
+                <span class="priority-badge" [ngClass]="getPriorityClass(request.priority)">
+                  {{ request.priority }}
+                </span>
+              </div>
+              <h3 class="request-title">{{ request.title }}</h3>
+              <div class="request-meta">
+                <span class="status-badge" [ngClass]="getStatusClass(request.status)">
+                  {{ request.status }}
+                </span>
+                <span class="request-type">{{ request.requestType }}</span>
+              </div>
+              @if (request.assignedTo) {
+                <div class="assigned-info">
+                  Assigned to: {{ request.assignedTo }}
+                </div>
+              }
+              @if (request.assignedBy) {
+                <div class="assigned-by-info">
+                  Assigned by: {{ request.assignedBy }}
+                </div>
+              }
+              @if (request.etaApproaching || request.etaExceeded) {
+                <div class="eta-alert" [ngClass]="{'eta-exceeded': request.etaExceeded}">
+                  @if (request.etaExceeded) {
+                    ⚠️ ETA Exceeded
+                  } @else {
+                    ⏰ ETA Approaching: {{ request.timeUntilEta }}
+                  }
+                </div>
+              }
+              <div class="request-footer">
+                <span class="time-info">Created by: {{ request.createdBy }}</span>
+                @if (request.timeInOpenQueue) {
+                  <span class="time-info">In queue: {{ request.timeInOpenQueue }}</span>
+                }
+                @if (request.timeInDeveloperQueue) {
+                  <span class="time-info">In dev queue: {{ request.timeInDeveloperQueue }}</span>
+                }
+                <span class="time-info">Created: {{ request.createdAt | date:'short' }}</span>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>
